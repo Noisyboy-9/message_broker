@@ -6,9 +6,10 @@ import (
 	"math/rand"
 	"sync"
 	"testing"
+	"time"
+
 	"therealbroker/pkg/broker"
 	"therealbroker/pkg/message"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )

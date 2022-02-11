@@ -3,9 +3,10 @@ package broker
 import (
 	"context"
 	"sync"
+	"time"
+
 	"therealbroker/pkg/broker"
 	"therealbroker/pkg/message"
-	"time"
 )
 
 type Module struct {
@@ -39,7 +40,7 @@ func (m *Module) Close() error {
 	return nil
 }
 
-func (m *Module) Publish(ctx context.Context, subject string, msg message.Message) (int, error) {
+func (m *Module) Publish(_ context.Context, subject string, msg message.Message) (int, error) {
 	if m.isClosed {
 		return -1, broker.ErrUnavailable
 	}
@@ -100,7 +101,7 @@ func (m *Module) Subscribe(ctx context.Context, subject string) (<-chan message.
 	}
 }
 
-func (m *Module) Fetch(ctx context.Context, subject string, id int) (message.Message, error) {
+func (m *Module) Fetch(_ context.Context, subject string, id int) (message.Message, error) {
 	if m.isClosed {
 		return message.Message{}, broker.ErrUnavailable
 	}
