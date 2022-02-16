@@ -22,6 +22,7 @@ type Server struct {
 
 func (s Server) Publish(ctx context.Context, request *proto.PublishRequest) (*proto.PublishResponse, error) {
 	log.Println("Getting publish request")
+	defer log.Println("Finish handling publish request")
 
 	publishId, err := s.brokerInstance.Publish(ctx, request.Subject, message.Message{
 		Body:       string(request.Body),
@@ -37,6 +38,8 @@ func (s Server) Publish(ctx context.Context, request *proto.PublishRequest) (*pr
 
 func (s Server) Subscribe(request *proto.SubscribeRequest, server proto.Broker_SubscribeServer) error {
 	log.Println("Getting Subscribe Request")
+	defer log.Printf("Finish handling subscribe request")
+
 	ctx := server.Context()
 
 	for {
@@ -61,6 +64,8 @@ func (s Server) Subscribe(request *proto.SubscribeRequest, server proto.Broker_S
 
 func (s Server) Fetch(ctx context.Context, request *proto.FetchRequest) (*proto.MessageResponse, error) {
 	log.Println("Getting fetch request")
+	defer log.Println("Finish handling fetch request")
+
 	msg, err := s.brokerInstance.Fetch(ctx, request.Subject, int(request.Id))
 
 	if err != nil {
