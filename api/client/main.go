@@ -60,6 +60,7 @@ func pushToSubject(client proto.BrokerClient, ctx context.Context, subject strin
 		Body:              []byte(body),
 		ExpirationSeconds: int32(expire),
 	})
+
 	if err != nil {
 		log.Fatalf("publish to subject failed: %s", err)
 	}

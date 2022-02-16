@@ -13,6 +13,7 @@ type Module struct {
 	Listeners                 map[string][]chan message.Message
 	MessagesPerSubject        map[string][]message.Message
 	MessageExpirationTime     map[message.Message]time.Time
+	lastPublishId             int
 	IsClosed                  bool
 	ListenersLock             sync.Mutex
 	MessagesPerSubjectLock    sync.Mutex
@@ -47,6 +48,8 @@ func (m *Module) Publish(_ context.Context, subject string, msg message.Message)
 
 	m.MessageExpirationTimeLock.Lock()
 	m.MessageExpirationTime[msg] = time.Now().Add(msg.Expiration)
+	msg.SetId(m.lastPublishId + 1)
+	m.lastPublishId += 1
 	m.MessageExpirationTimeLock.Unlock()
 
 	m.MessagesPerSubjectLock.Lock()
