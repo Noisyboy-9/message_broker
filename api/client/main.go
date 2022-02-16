@@ -16,7 +16,7 @@ var (
 )
 
 func main() {
-	connection, err := grpc.Dial("127.0.0.1:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	connection, err := grpc.Dial("localhost:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("can't connect to server: %v", err)
 	}

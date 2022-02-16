@@ -77,7 +77,7 @@ func (s Server) Fetch(ctx context.Context, request *proto.FetchRequest) (*proto.
 }
 
 func main() {
-	log.Println("************** Sina Shariati Broker - Bale 1400 winter bootcamp")
+	log.Println("************** Sina Shariati Broker - Bale 1400 winter bootcamp*************")
 	listener, err := net.Listen("tcp", "127.0.0.1:8080")
 
 	if err != nil {
