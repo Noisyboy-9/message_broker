@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net"
 	"time"
@@ -35,8 +36,27 @@ func (s Server) Publish(ctx context.Context, request *proto.PublishRequest) (*pr
 }
 
 func (s Server) Subscribe(request *proto.SubscribeRequest, server proto.Broker_SubscribeServer) error {
-	// TODO implement me
-	panic("implement me")
+	log.Println("Getting Subscribe Request")
+	ctx := server.Context()
+
+	for {
+		channel, err := s.brokerInstance.Subscribe(ctx, request.Subject)
+
+		if err != nil {
+			log.Fatalf("Error in subscribing to broker: %s", err)
+		}
+
+		select {
+		case msg := <-channel:
+			serverResponse := proto.MessageResponse{Body: []byte(msg.Body)}
+
+			if err := server.Send(&serverResponse); err != nil {
+				return nil
+			}
+		case <-ctx.Done():
+			return errors.New("context timeout")
+		}
+	}
 }
 
 func (s Server) Fetch(ctx context.Context, request *proto.FetchRequest) (*proto.MessageResponse, error) {
