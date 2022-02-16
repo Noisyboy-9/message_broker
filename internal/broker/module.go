@@ -10,52 +10,52 @@ import (
 )
 
 type Module struct {
-	listeners                 map[string][]chan message.Message
-	messagesPerSubject        map[string][]message.Message
-	messageExpirationTime     map[message.Message]time.Time
-	isClosed                  bool
-	listenersLock             sync.Mutex
-	messagesPerSubjectLock    sync.Mutex
-	messageExpirationTimeLock sync.Mutex
+	Listeners                 map[string][]chan message.Message
+	MessagesPerSubject        map[string][]message.Message
+	MessageExpirationTime     map[message.Message]time.Time
+	IsClosed                  bool
+	ListenersLock             sync.Mutex
+	MessagesPerSubjectLock    sync.Mutex
+	MessageExpirationTimeLock sync.Mutex
 }
 
 func NewModule() broker.Broker {
 	return &Module{
-		listeners:                 make(map[string][]chan message.Message),
-		messagesPerSubject:        make(map[string][]message.Message),
-		messageExpirationTime:     make(map[message.Message]time.Time),
-		isClosed:                  false,
-		listenersLock:             sync.Mutex{},
-		messagesPerSubjectLock:    sync.Mutex{},
-		messageExpirationTimeLock: sync.Mutex{},
+		Listeners:                 make(map[string][]chan message.Message),
+		MessagesPerSubject:        make(map[string][]message.Message),
+		MessageExpirationTime:     make(map[message.Message]time.Time),
+		IsClosed:                  false,
+		ListenersLock:             sync.Mutex{},
+		MessagesPerSubjectLock:    sync.Mutex{},
+		MessageExpirationTimeLock: sync.Mutex{},
 	}
 }
 
 func (m *Module) Close() error {
-	if m.isClosed {
+	if m.IsClosed {
 		return broker.ErrUnavailable
 	}
 
-	m.isClosed = true
+	m.IsClosed = true
 	return nil
 }
 
 func (m *Module) Publish(_ context.Context, subject string, msg message.Message) (int, error) {
-	if m.isClosed {
+	if m.IsClosed {
 		return -1, broker.ErrUnavailable
 	}
 
-	m.messageExpirationTimeLock.Lock()
-	m.messageExpirationTime[msg] = time.Now().Add(msg.Expiration)
-	m.messageExpirationTimeLock.Unlock()
+	m.MessageExpirationTimeLock.Lock()
+	m.MessageExpirationTime[msg] = time.Now().Add(msg.Expiration)
+	m.MessageExpirationTimeLock.Unlock()
 
-	m.messagesPerSubjectLock.Lock()
-	m.messagesPerSubject[subject] = append(m.messagesPerSubject[subject], msg)
-	m.messagesPerSubjectLock.Unlock()
+	m.MessagesPerSubjectLock.Lock()
+	m.MessagesPerSubject[subject] = append(m.MessagesPerSubject[subject], msg)
+	m.MessagesPerSubjectLock.Unlock()
 
 	var wg sync.WaitGroup
 
-	for _, listener := range m.listeners[subject] {
+	for _, listener := range m.Listeners[subject] {
 		wg.Add(1)
 		go func(listener chan message.Message) {
 			defer wg.Done()
@@ -67,7 +67,7 @@ func (m *Module) Publish(_ context.Context, subject string, msg message.Message)
 }
 
 func (m *Module) Subscribe(ctx context.Context, subject string) (<-chan message.Message, error) {
-	if m.isClosed {
+	if m.IsClosed {
 		return nil, broker.ErrUnavailable
 	}
 
@@ -77,39 +77,39 @@ func (m *Module) Subscribe(ctx context.Context, subject string) (<-chan message.
 	default:
 		newChannel := make(chan message.Message, 100)
 
-		m.listenersLock.Lock()
-		_, exist := m.listeners[subject]
-		m.listenersLock.Unlock()
+		m.ListenersLock.Lock()
+		_, exist := m.Listeners[subject]
+		m.ListenersLock.Unlock()
 
 		if exist {
-			m.listenersLock.Lock()
-			m.listeners[subject] = append(m.listeners[subject], newChannel)
-			m.listenersLock.Unlock()
+			m.ListenersLock.Lock()
+			m.Listeners[subject] = append(m.Listeners[subject], newChannel)
+			m.ListenersLock.Unlock()
 
 			return newChannel, nil
 		}
 
-		m.listenersLock.Lock()
-		m.listeners[subject] = append(make([]chan message.Message, 0), newChannel)
-		m.listenersLock.Unlock()
+		m.ListenersLock.Lock()
+		m.Listeners[subject] = append(make([]chan message.Message, 0), newChannel)
+		m.ListenersLock.Unlock()
 
-		m.messagesPerSubjectLock.Lock()
-		m.messagesPerSubject[subject] = make([]message.Message, 0)
-		m.messagesPerSubjectLock.Unlock()
+		m.MessagesPerSubjectLock.Lock()
+		m.MessagesPerSubject[subject] = make([]message.Message, 0)
+		m.MessagesPerSubjectLock.Unlock()
 
 		return newChannel, nil
 	}
 }
 
 func (m *Module) Fetch(_ context.Context, subject string, id int) (message.Message, error) {
-	if m.isClosed {
+	if m.IsClosed {
 		return message.Message{}, broker.ErrUnavailable
 	}
 
-	for _, msg := range m.messagesPerSubject[subject] {
+	for _, msg := range m.MessagesPerSubject[subject] {
 		if msg.GetId() == id {
 			// found the message check if it is expired or not
-			expireTime := m.messageExpirationTime[msg]
+			expireTime := m.MessageExpirationTime[msg]
 
 			if expireTime.After(time.Now()) {
 				return msg, nil
