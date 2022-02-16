@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-import "google/protobuf/duration.proto";
-
-message brokerRequest {
-  int64 id = 1;
-  string body = 2;
-  google.protobuf.Duration expiration = 3;
-}
