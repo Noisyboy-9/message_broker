@@ -60,8 +60,15 @@ func (s Server) Subscribe(request *proto.SubscribeRequest, server proto.Broker_S
 }
 
 func (s Server) Fetch(ctx context.Context, request *proto.FetchRequest) (*proto.MessageResponse, error) {
-	// TODO implement me
-	panic("implement me")
+	log.Println("Getting fetch request")
+	msg, err := s.brokerInstance.Fetch(ctx, request.Subject, int(request.Id))
+
+	if err != nil {
+		return nil, err
+	}
+	return &proto.MessageResponse{
+		Body: []byte(msg.Body),
+	}, nil
 }
 
 func main() {
