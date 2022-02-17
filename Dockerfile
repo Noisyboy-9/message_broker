@@ -14,6 +14,7 @@ RUN apt install -y build-essential
 COPY ./api ./message_broker/api/
 COPY ./internal ./message_broker/internal
 COPY ./pkg ./message_broker/pkg
+COPY ./prometheus ./message_broker/prometheus
 COPY ./.gitignore ./message_broker
 COPY ./go.mod ./message_broker
 COPY ./main.go ./main.go
