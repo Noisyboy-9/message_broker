@@ -23,13 +23,13 @@ COPY ./README.md ./message_broker
 
 WORKDIR ./message_broker
 
-# RUN go mod tidy
+ENV PROMETHEUS_SERVER_PORT=8000
+ENV BROKER_SERVER_PORT=9000
+
+EXPOSE $PROMETHEUS_SERVER_PORT
+EXPOSE $BROKER_SERVER_PORT
+
 RUN go mod tidy
-
-
-EXPOSE 8080/udp
-EXPOSE 8080/tcp
-
 # setup go-protc
 CMD go run ./api/server/main.go
 

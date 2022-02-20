@@ -3,9 +3,9 @@ version: "3.9"
 services:
 #  broker service
   broker:
-    image: noisyboy9/bale-message-broker:latest
+    image: noisyboy9/bale_message_broker:latest
     ports:
-      - "8080:8080"
+      - "8000:8000"
       - "9000:9000"
     restart: on-failure
 
@@ -14,6 +14,7 @@ services:
     image: prom/prometheus:latest
     volumes:
       - ./prometheus:/etc/prometheus/
+      - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -24,6 +25,19 @@ services:
     depends_on:
       - broker
 
+#  setup node exporter
+  node_exporter:
+    image: prom/node-exporter
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    command:
+      - "--path.rootfs=/host"
+    pid: host
+    restart: always
+    depends_on:
+      - prometheus
+
   # Grafana Service
   grafana:
     image: grafana/grafana:latest
@@ -31,9 +45,12 @@ services:
       - grafana_data:/var/lib/grafana
     ports:
       - "3000:3000"
-
     depends_on:
       - prometheus
+
 volumes:
   grafana_data:
-    external: true
+    driver: local
+  prometheus-data:
+      driver: local
+

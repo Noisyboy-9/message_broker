@@ -6,8 +6,13 @@ scrape_configs:
   - job_name: prometheus
     static_configs:
       - targets: ['localhost:9090']
+
   - job_name: broker
     metrics_path:  /metrics
     static_configs:
       - targets:
-          - broker:8080
+          - broker:8000
+  - job_name: node
+    scrape_interval: 1s
+    static_configs:
+      - targets: ['node-exporter:9100']
