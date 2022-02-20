@@ -5,11 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
-	"github.com/uber/jaeger-client-go"
-	jaegercfg "github.com/uber/jaeger-client-go/config"
-	jaegerlog "github.com/uber/jaeger-client-go/log"
-	"github.com/uber/jaeger-lib/metrics"
 	"therealbroker/pkg/broker"
 	"therealbroker/pkg/message"
 )
@@ -24,21 +19,6 @@ type Module struct {
 	MessagesPerSubjectLock    sync.Mutex
 	MessageExpirationTimeLock sync.Mutex
 }
-
-var (
-	config = jaegercfg.Configuration{
-		ServiceName: "inside module",
-		Sampler: &jaegercfg.SamplerConfig{
-			Type:  jaeger.SamplerTypeConst,
-			Param: 1,
-		},
-		Reporter: &jaegercfg.ReporterConfig{
-			LogSpans: true,
-		},
-	}
-	jLogger         = jaegerlog.StdLogger
-	jMetricsFactory = metrics.NullFactory
-)
 
 func NewModule() broker.Broker {
 	return &Module{
@@ -65,33 +45,19 @@ func (m *Module) Publish(_ context.Context, subject string, msg message.Message)
 	if m.IsClosed {
 		return -1, broker.ErrUnavailable
 	}
-	tracer, closer, err := config.NewTracer(
-		jaegercfg.Logger(jLogger),
-		jaegercfg.Metrics(jMetricsFactory),
-	)
-	if err != nil {
-		return 0, err
-	}
-	defer closer.Close()
 
-	opentracing.SetGlobalTracer(tracer)
-
-	expirationSpan := tracer.StartSpan("message expiration setting")
 	m.MessageExpirationTimeLock.Lock()
 	m.MessageExpirationTime[msg] = time.Now().Add(msg.Expiration)
 	msg.SetId(m.lastPublishId + 1)
 	m.lastPublishId += 1
 	m.MessageExpirationTimeLock.Unlock()
-	expirationSpan.Finish()
 
-	messagePerSubjectSpan := tracer.StartSpan("setting message per subject")
 	m.MessagesPerSubjectLock.Lock()
 	m.MessagesPerSubject[subject] = append(m.MessagesPerSubject[subject], msg)
 	m.MessagesPerSubjectLock.Unlock()
-	messagePerSubjectSpan.Finish()
 
-	pushingMessageToChannelsSpan := tracer.StartSpan("push message to channels span")
 	var wg sync.WaitGroup
+
 	for _, listener := range m.Listeners[subject] {
 		wg.Add(1)
 		go func(listener chan message.Message) {
@@ -100,7 +66,6 @@ func (m *Module) Publish(_ context.Context, subject string, msg message.Message)
 		}(listener)
 	}
 	wg.Wait()
-	pushingMessageToChannelsSpan.Finish()
 
 	return msg.GetId(), nil
 }

@@ -9,14 +9,6 @@ services:
       - "9000:9000"
     restart: on-failure
 
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    ports:
-      - "6831:6831/udp"
-      - "16686:16686"
-    depends_on:
-      - broker
-
   # Prometheus Service
   prometheus:
     image: prom/prometheus:latest

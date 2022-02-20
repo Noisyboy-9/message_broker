@@ -10,13 +10,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"google.golang.org/grpc"
 	"therealbroker/api/pb/api/proto"
 	broker2 "therealbroker/internal/broker"
 	"therealbroker/pkg/broker"
 	"therealbroker/pkg/message"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"google.golang.org/grpc"
+)
+
+var (
+	brokerPort             = 9000
+	internalPrometheusPort = 8000
 )
 
 type Server struct {
@@ -25,9 +31,6 @@ type Server struct {
 }
 
 var (
-	brokerPort             = 9000
-	internalPrometheusPort = 8000
-
 	MethodCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "rpc_request_get_method_count",
