@@ -66,6 +66,7 @@ func (m *Module) Publish(_ context.Context, subject string, msg message.Message)
 		}(listener)
 	}
 	wg.Wait()
+
 	return msg.GetId(), nil
 }
 

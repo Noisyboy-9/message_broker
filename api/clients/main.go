@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"therealbroker/api/pb/api/proto"
@@ -12,11 +14,11 @@ import (
 )
 
 var (
-	sub = "sub1"
+	subject = "sub1"
 )
 
 func main() {
-	connection, err := grpc.Dial("localhost:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	connection, err := grpc.Dial("localhost:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("can't connect to server: %v", err)
 	}
@@ -31,30 +33,37 @@ func main() {
 	client := proto.NewBrokerClient(connection)
 	ctx := context.Background()
 
-	for i := 0; i < 50; i++ {
-		pushToSubject(client, ctx, sub, "some body for testing", 2*time.Hour)
-	}
+	var wg sync.WaitGroup
 
-	subscribeToSubject(client, ctx, sub)
-}
+	ticker := time.NewTicker(144 * time.Microsecond) // 0.5 billion request in 20 minutes
+	doneIndicator := make(chan bool)
 
-func subscribeToSubject(client proto.BrokerClient, ctx context.Context, subject string) {
-	subClient, err := client.Subscribe(ctx, &proto.SubscribeRequest{Subject: subject})
-	if err != nil {
-		log.Fatalf("subscribe to broker failed: %s", err)
-	}
-
-	for {
-		messageResponse, err := subClient.Recv()
-		if err != nil {
-			log.Fatalf("error: %v", err)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-doneIndicator:
+				return
+			case <-ticker.C:
+				body := fmt.Sprintf("some text for testing : %v", time.Now())
+				go pushToSubject(client, ctx, subject, body, int(10*time.Hour))
+			}
 		}
+	}()
 
-		log.Println("subscribe response", string(messageResponse.Body))
-	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		time.Sleep(20 * time.Minute)
+		ticker.Stop()
+		doneIndicator <- true
+	}()
+	wg.Wait()
+
 }
 
-func pushToSubject(client proto.BrokerClient, ctx context.Context, subject string, body string, expire time.Duration) {
+func pushToSubject(client proto.BrokerClient, ctx context.Context, subject string, body string, expire int) {
 	publishResponse, err := client.Publish(ctx, &proto.PublishRequest{
 		Subject:           subject,
 		Body:              []byte(body),
