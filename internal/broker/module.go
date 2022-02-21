@@ -7,6 +7,8 @@ import (
 
 	"therealbroker/pkg/broker"
 	"therealbroker/pkg/message"
+
+	"github.com/opentracing/opentracing-go"
 )
 
 type Module struct {
@@ -41,31 +43,34 @@ func (m *Module) Close() error {
 	return nil
 }
 
-func (m *Module) Publish(_ context.Context, subject string, msg message.Message) (int, error) {
+func (m *Module) Publish(ctx context.Context, subject string, msg message.Message) (int, error) {
 	if m.IsClosed {
 		return -1, broker.ErrUnavailable
 	}
 
+	span1, ctx := opentracing.StartSpanFromContext(ctx, "lock 1")
 	m.MessageExpirationTimeLock.Lock()
 	m.MessageExpirationTime[msg] = time.Now().Add(msg.Expiration)
 	msg.SetId(m.lastPublishId + 1)
 	m.lastPublishId += 1
 	m.MessageExpirationTimeLock.Unlock()
+	span1.Finish()
 
+	span2, ctx := opentracing.StartSpanFromContext(ctx, "lock 2")
 	m.MessagesPerSubjectLock.Lock()
 	m.MessagesPerSubject[subject] = append(m.MessagesPerSubject[subject], msg)
 	m.MessagesPerSubjectLock.Unlock()
+	span2.Finish()
 
-	var wg sync.WaitGroup
-
+	span3, ctx := opentracing.StartSpanFromContext(ctx, "lock 3")
 	for _, listener := range m.Listeners[subject] {
-		wg.Add(1)
 		go func(listener chan message.Message) {
-			defer wg.Done()
-			listener <- msg
+			if cap(listener) != len(listener) {
+				listener <- msg
+			}
 		}(listener)
 	}
-	wg.Wait()
+	span3.Finish()
 
 	return msg.GetId(), nil
 }
