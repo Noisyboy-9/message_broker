@@ -8,9 +8,6 @@ import (
 	"time"
 
 	"therealbroker/api/pb/api/proto"
-	"therealbroker/api/server/jaeger"
-
-	"github.com/opentracing/opentracing-go"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -21,14 +18,7 @@ var (
 )
 
 func main() {
-	jaegerTracer, closer, err := jaeger.InitJaeger()
-	if err != nil {
-		log.Fatalf("jaegerTracer init: %v", err)
-	}
-	defer closer.Close()
-	opentracing.SetGlobalTracer(jaegerTracer)
-
-	connection, err := grpc.Dial("localhost:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	connection, err := grpc.Dial("localhost:55569", grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	if err != nil {
 		log.Fatalf("can't connect to server: %v", err)
@@ -43,9 +33,6 @@ func main() {
 
 	client := proto.NewBrokerClient(connection)
 	ctx := context.Background()
-
-	clientSpan, ctx := opentracing.StartSpanFromContext(ctx, "client")
-	defer clientSpan.Finish()
 
 	var wg sync.WaitGroup
 	ticker := time.NewTicker(144 * time.Microsecond) // 0.5 billion request in 20 minutes
