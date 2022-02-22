@@ -15,6 +15,8 @@ import (
 	"therealbroker/pkg/broker"
 	"therealbroker/pkg/message"
 
+	"github.com/opentracing/opentracing-go"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
@@ -56,8 +58,10 @@ var (
 )
 
 func (s Server) Publish(ctx context.Context, request *proto.PublishRequest) (*proto.PublishResponse, error) {
-	publishStartTime := time.Now()
+	serverSpan, ctx := opentracing.StartSpanFromContext(ctx, "server")
+	defer serverSpan.Finish()
 
+	publishStartTime := time.Now()
 	log.Println("Getting publish request")
 	defer log.Println("Finish handling publish request")
 
