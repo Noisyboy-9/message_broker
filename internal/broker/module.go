@@ -7,8 +7,6 @@ import (
 
 	"therealbroker/pkg/broker"
 	"therealbroker/pkg/message"
-
-	"github.com/opentracing/opentracing-go"
 )
 
 type Module struct {
@@ -48,21 +46,16 @@ func (m *Module) Publish(ctx context.Context, subject string, msg message.Messag
 		return -1, broker.ErrUnavailable
 	}
 
-	span1, ctx := opentracing.StartSpanFromContext(ctx, "lock 1")
 	m.MessageExpirationTimeLock.Lock()
 	m.MessageExpirationTime[msg] = time.Now().Add(msg.Expiration)
 	msg.SetId(m.lastPublishId + 1)
 	m.lastPublishId += 1
 	m.MessageExpirationTimeLock.Unlock()
-	span1.Finish()
 
-	span2, ctx := opentracing.StartSpanFromContext(ctx, "lock 2")
 	m.MessagesPerSubjectLock.Lock()
 	m.MessagesPerSubject[subject] = append(m.MessagesPerSubject[subject], msg)
 	m.MessagesPerSubjectLock.Unlock()
-	span2.Finish()
 
-	span3, ctx := opentracing.StartSpanFromContext(ctx, "lock 3")
 	for _, listener := range m.Listeners[subject] {
 		go func(listener chan message.Message) {
 			if cap(listener) != len(listener) {
@@ -70,7 +63,6 @@ func (m *Module) Publish(ctx context.Context, subject string, msg message.Messag
 			}
 		}(listener)
 	}
-	span3.Finish()
 
 	return msg.GetId(), nil
 }
