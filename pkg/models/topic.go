@@ -37,7 +37,7 @@ func (topic *Topic) Save(db *pgxpool.Pool, ctx context.Context) *Topic {
 
 func GetOrCreateTopicByName(dbConnection *pgxpool.Pool, dbCtx context.Context, name string) *Topic {
 	if TopicExist(dbConnection, dbCtx, name) {
-		return GetTopicByName(name, dbConnection, dbCtx)
+		return GetTopicByName(dbConnection, dbCtx, name)
 	}
 
 	// 	topic doesn't exist create and persist it
@@ -50,7 +50,7 @@ func GetOrCreateTopicByName(dbConnection *pgxpool.Pool, dbCtx context.Context, n
 	return topic.Save(dbConnection, dbCtx)
 }
 
-func GetTopicByName(name string, db *pgxpool.Pool, ctx context.Context) (topic *Topic) {
+func GetTopicByName(db *pgxpool.Pool, ctx context.Context, name string) (topic *Topic) {
 	if err := pgxscan.Select(ctx, db, &topic, "SELECT * FROM topics WHERE name = $1", name); err != nil {
 		log.Fatalf("get topic by name err %v", err)
 	}

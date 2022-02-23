@@ -10,20 +10,16 @@ import (
 )
 
 type Module struct {
-	subscribers               map[string][]chan models.Message
-	MessagesPerSubject        map[string][]models.Message
-	MessageExpirationTime     map[models.Message]time.Time
-	lastPublishId             int
-	IsClosed                  bool
-	ListenersLock             sync.Mutex
-	MessagesPerSubjectLock    sync.Mutex
-	MessageExpirationTimeLock sync.Mutex
+	subscribers   map[*models.Topic][]chan models.Message
+	IsClosed      bool
+	ListenersLock sync.Mutex
 }
 
 func NewModule() broker.Broker {
 	return &Module{
-		subscribers: make(map[string][]chan models.Message),
-		IsClosed:    false,
+		subscribers:   make(map[*models.Topic][]chan models.Message),
+		IsClosed:      false,
+		ListenersLock: sync.Mutex{},
 	}
 }
 
@@ -41,7 +37,7 @@ func (m *Module) Publish(ctx context.Context, topic *models.Topic, msg *models.M
 		return -1, broker.ErrUnavailable
 	}
 
-	for _, listener := range m.subscribers[topic.Name] {
+	for _, listener := range m.subscribers[topic] {
 		go func(listener chan models.Message) {
 			if cap(listener) != len(listener) {
 				listener <- *msg
@@ -52,7 +48,7 @@ func (m *Module) Publish(ctx context.Context, topic *models.Topic, msg *models.M
 	return msg.Id, nil
 }
 
-func (m *Module) Subscribe(ctx context.Context, subject string) (<-chan models.Message, error) {
+func (m *Module) Subscribe(ctx context.Context, topic *models.Topic) (<-chan models.Message, error) {
 	if m.IsClosed {
 		return nil, broker.ErrUnavailable
 	}
@@ -62,32 +58,15 @@ func (m *Module) Subscribe(ctx context.Context, subject string) (<-chan models.M
 		return nil, broker.ErrExpiredID
 	default:
 		newChannel := make(chan models.Message, 100)
-
 		m.ListenersLock.Lock()
-		_, exist := m.subscribers[subject]
+		m.subscribers[topic] = append(make([]chan models.Message, 0), newChannel)
 		m.ListenersLock.Unlock()
-
-		if exist {
-			m.ListenersLock.Lock()
-			m.subscribers[subject] = append(m.subscribers[subject], newChannel)
-			m.ListenersLock.Unlock()
-
-			return newChannel, nil
-		}
-
-		m.ListenersLock.Lock()
-		m.subscribers[subject] = append(make([]chan models.Message, 0), newChannel)
-		m.ListenersLock.Unlock()
-
-		m.MessagesPerSubjectLock.Lock()
-		m.MessagesPerSubject[subject] = make([]models.Message, 0)
-		m.MessagesPerSubjectLock.Unlock()
 
 		return newChannel, nil
 	}
 }
 
-func (m *Module) Fetch(_ context.Context, subject string, id int) (models.Message, error) {
+func (m *Module) Fetch(_ context.Context, topic *models.Topic, id int) (models.Message, error) {
 	if m.IsClosed {
 		return models.Message{}, broker.ErrUnavailable
 	}

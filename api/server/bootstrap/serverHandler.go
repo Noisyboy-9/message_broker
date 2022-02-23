@@ -27,10 +27,7 @@ func (s Server) Publish(ctx context.Context, request *proto.PublishRequest) (*pr
 	log.Println("Getting publish request")
 	defer log.Println("Finish handling publish request")
 
-	// get or create the topic
 	topic := models.GetOrCreateTopicByName(s.Database, s.DatabaseContext, request.Subject)
-
-	// create the message
 	msg := models.CreateMessage(s.Database, s.DatabaseContext, topic, string(request.Body), request.ExpirationSeconds)
 
 	publishId, err := s.BrokerInstance.Publish(ctx, topic, msg)
@@ -41,10 +38,9 @@ func (s Server) Publish(ctx context.Context, request *proto.PublishRequest) (*pr
 	if err != nil {
 		MethodCount.WithLabelValues("publish", "failed").Inc()
 		return nil, err
-	} else {
-		MethodCount.WithLabelValues("publish", "successful").Inc()
 	}
 
+	MethodCount.WithLabelValues("publish", "successful").Inc()
 	return &proto.PublishResponse{Id: int32(publishId)}, nil
 }
 
@@ -52,7 +48,11 @@ func (s Server) Subscribe(request *proto.SubscribeRequest, server proto.Broker_S
 	fmt.Println("Subscriber request received.")
 	var subscribeError error
 
-	SubscribedChannel, err := s.BrokerInstance.Subscribe(server.Context(), request.Subject)
+	SubscribedChannel, err := s.BrokerInstance.Subscribe(
+		server.Context(),
+		models.GetTopicByName(s.Database, s.DatabaseContext, request.Subject),
+	)
+
 	if err != nil {
 		MethodCount.WithLabelValues("subscribe", "failed").Inc()
 		return err
@@ -84,14 +84,13 @@ func (s Server) Subscribe(request *proto.SubscribeRequest, server proto.Broker_S
 			}
 		}
 	}()
-	wg.Wait()
 
+	wg.Wait()
 	if subscribeError == nil {
 		MethodCount.WithLabelValues("subscribe", "successful").Inc()
 	} else {
 		MethodCount.WithLabelValues("subscribe", "failed").Inc()
 	}
-
 	return subscribeError
 }
 
