@@ -19,9 +19,18 @@ type Message struct {
 }
 
 func (msg *Message) Save() *Message {
-	_, err := msg.db.Exec(msg.dbCtx, "INSERT INTO messages() VALUES ($1, $2, $3, $4, $5)", msg.TopicID, msg.Body, msg.CreatedAT, msg.ExpiredAt, msg.DeletedAt)
+	err := msg.db.QueryRow(
+		msg.dbCtx,
+		"INSERT INTO messages(topic_id, body, created_at, expired_at, deleted_at) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+		msg.TopicID,
+		msg.Body,
+		msg.CreatedAT,
+		msg.ExpiredAt,
+		msg.DeletedAt,
+	).Scan(&msg.Id)
+
 	if err != nil {
-		log.Fatalf("message write error: %v", err)
+		log.Fatalf("message save err: %v", err)
 	}
 
 	return msg

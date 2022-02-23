@@ -24,9 +24,7 @@ var (
 
 func init() {
 	go bootstrap.StartPrometheusServer()
-	go func() {
-		db, dbContext = database.Setup()
-	}()
+	db, dbContext = database.Setup()
 }
 
 func main() {

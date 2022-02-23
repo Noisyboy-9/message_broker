@@ -2,10 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"sync"
-	"time"
 
 	"therealbroker/api/pb/api/proto"
 
@@ -18,7 +15,7 @@ var (
 )
 
 func main() {
-	connection, err := grpc.Dial("localhost:55569", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	connection, err := grpc.Dial("localhost:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	if err != nil {
 		log.Fatalf("can't connect to server: %v", err)
@@ -34,32 +31,33 @@ func main() {
 	client := proto.NewBrokerClient(connection)
 	ctx := context.Background()
 
-	var wg sync.WaitGroup
-	ticker := time.NewTicker(144 * time.Microsecond) // 0.5 billion request in 20 minutes
-	doneIndicator := make(chan bool)
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case <-doneIndicator:
-				return
-			case <-ticker.C:
-				body := fmt.Sprintf("some text for testing : %v", time.Now())
-				go pushToSubject(client, ctx, subject, body, int(10*time.Hour))
-			}
-		}
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		time.Sleep(20 * time.Minute)
-		ticker.Stop()
-		doneIndicator <- true
-	}()
-	wg.Wait()
+	pushToSubject(client, ctx, subject, "some body for testing", 1000)
+	// var wg sync.WaitGroup
+	// ticker := time.NewTicker(144 * time.Microsecond) // 0.5 billion request in 20 minutes
+	// doneIndicator := make(chan bool)
+	//
+	// wg.Add(1)
+	// go func() {
+	// 	defer wg.Done()
+	// 	for {
+	// 		select {
+	// 		case <-doneIndicator:
+	// 			return
+	// 		case <-ticker.C:
+	// 			body := fmt.Sprintf("some text for testing : %v", time.Now())
+	// 			go pushToSubject(client, ctx, subject, body, int(10*time.Hour))
+	// 		}
+	// 	}
+	// }()
+	//
+	// wg.Add(1)
+	// go func() {
+	// 	defer wg.Done()
+	// 	time.Sleep(20 * time.Minute)
+	// 	ticker.Stop()
+	// 	doneIndicator <- true
+	// }()
+	// wg.Wait()
 
 }
 

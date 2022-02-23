@@ -20,14 +20,14 @@ type Topic struct {
 }
 
 func (topic *Topic) Save(db *pgxpool.Pool, ctx context.Context) *Topic {
-	_, err := topic.db.Exec(
+	err := topic.db.QueryRow(
 		topic.dbCtx,
-		"INSERT INTO topics (name, created_at, updated_at, deleted_at) VALUES ($1, $2, $3, $4)",
+		"INSERT INTO topics (name, created_at, updated_at, deleted_at) VALUES ($1, $2, $3, $4) RETURNING id",
 		topic.Name,
 		topic.CreatedAt,
 		topic.UpdatedAt,
 		topic.DeletedAt,
-	)
+	).Scan(&topic.Id)
 
 	if err != nil {
 		log.Fatalf("topic save err: %v", err)
@@ -44,7 +44,7 @@ func (topic *Topic) Messages() (messages []*Message) {
 		"SELECT * FROM messages WHERE topic_id = $1",
 		topic.Id,
 	); err != nil {
-		log.Fatalf("something went wrong: %v", err)
+		log.Fatalf("something went wrong for reading topic: %v", err)
 	}
 
 	return
@@ -69,27 +69,31 @@ func GetOrCreateTopicByName(dbConnection *pgxpool.Pool, dbCtx context.Context, n
 	return topic.Save(dbConnection, dbCtx)
 }
 
-func GetTopicByName(db *pgxpool.Pool, ctx context.Context, name string) (topic *Topic) {
-	if err := pgxscan.Select(ctx, db, &topic, "SELECT * FROM topics WHERE name = $1", name); err != nil {
-		log.Fatalf("get topic by name err %v", err)
+func GetTopicByName(db *pgxpool.Pool, ctx context.Context, name string) *Topic {
+	topic := &Topic{}
+	err := db.QueryRow(ctx, "SELECT * FROM topics WHERE name = $1", name).Scan(&topic.Id, &topic.Name, &topic.CreatedAt, &topic.UpdatedAt, &topic.DeletedAt)
+
+	if err != nil {
+		log.Fatalf("get topic by name read err: %v", err)
 	}
 
 	topic.db = db
 	topic.dbCtx = ctx
 
-	return
+	return topic
 }
 
 func TopicExist(db *pgxpool.Pool, ctx context.Context, name string) (exist bool) {
-	if err := db.QueryRow(ctx, "SELECT EXIST(SELECT * FROM topics WHERE name = $1)", name).Scan(&exist); err == pgx.ErrNoRows {
-		// topic doesn't exist
-		exist = false
+	rows, err := db.Query(ctx, "SELECT id FROM topics WHERE name = $1", name)
+	if err == pgx.ErrNoRows {
+		return false
 	} else if err != nil {
-		// 	have some other error other than topic not existing
-		log.Fatalf("something went wrong: %v", err)
+		log.Fatalf("something went wrong for topic exist: %v", err)
 	}
 
-	// topic exist
-	exist = true
-	return
+	rowsCount := 0
+	for rows.Next() {
+		rowsCount++
+	}
+	return rowsCount != 0
 }
