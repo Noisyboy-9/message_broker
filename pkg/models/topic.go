@@ -21,7 +21,7 @@ type Topic struct {
 func (topic *Topic) Save(db *pgxpool.Pool, ctx context.Context) *Topic {
 	_, err := db.Exec(
 		ctx,
-		"INSERT INTO topics (name, created_at, updated_at, deleted_at) VALUES ($1, $2, $3, %4)",
+		"INSERT INTO topics (name, created_at, updated_at, deleted_at) VALUES ($1, $2, $3, $4)",
 		topic.Name,
 		topic.CreatedAt,
 		topic.UpdatedAt,

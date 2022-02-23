@@ -10,7 +10,7 @@ import (
 
 	"therealbroker/api/pb/api/proto"
 	"therealbroker/pkg/broker"
-	"therealbroker/pkg/message"
+	"therealbroker/pkg/models"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -27,10 +27,13 @@ func (s Server) Publish(ctx context.Context, request *proto.PublishRequest) (*pr
 	log.Println("Getting publish request")
 	defer log.Println("Finish handling publish request")
 
-	publishId, err := s.BrokerInstance.Publish(ctx, request.Subject, message.Message{
-		Body:       string(request.Body),
-		Expiration: time.Duration(request.ExpirationSeconds),
-	})
+	// get or create the topic
+	topic := models.GetOrCreateTopicByName(s.Database, s.DatabaseContext, request.Subject)
+
+	// create the message
+	msg := models.CreateMessage(s.Database, s.DatabaseContext, topic, string(request.Body), request.ExpirationSeconds)
+
+	publishId, err := s.BrokerInstance.Publish(ctx, topic, msg)
 
 	publishDuration := time.Since(publishStartTime)
 	MethodDuration.WithLabelValues("publish_duration").Observe(float64(publishDuration) / float64(time.Millisecond))

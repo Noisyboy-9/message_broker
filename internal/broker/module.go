@@ -10,7 +10,7 @@ import (
 )
 
 type Module struct {
-	Listeners                 map[string][]chan models.Message
+	subscribers               map[string][]chan models.Message
 	MessagesPerSubject        map[string][]models.Message
 	MessageExpirationTime     map[models.Message]time.Time
 	lastPublishId             int
@@ -22,13 +22,8 @@ type Module struct {
 
 func NewModule() broker.Broker {
 	return &Module{
-		Listeners:                 make(map[string][]chan models.Message),
-		MessagesPerSubject:        make(map[string][]models.Message),
-		MessageExpirationTime:     make(map[models.Message]time.Time),
-		IsClosed:                  false,
-		ListenersLock:             sync.Mutex{},
-		MessagesPerSubjectLock:    sync.Mutex{},
-		MessageExpirationTimeLock: sync.Mutex{},
+		subscribers: make(map[string][]chan models.Message),
+		IsClosed:    false,
 	}
 }
 
@@ -45,7 +40,8 @@ func (m *Module) Publish(ctx context.Context, topic *models.Topic, msg *models.M
 	if m.IsClosed {
 		return -1, broker.ErrUnavailable
 	}
-	for _, listener := range m.Listeners[topic.Name] {
+
+	for _, listener := range m.subscribers[topic.Name] {
 		go func(listener chan models.Message) {
 			if cap(listener) != len(listener) {
 				listener <- *msg
@@ -68,19 +64,19 @@ func (m *Module) Subscribe(ctx context.Context, subject string) (<-chan models.M
 		newChannel := make(chan models.Message, 100)
 
 		m.ListenersLock.Lock()
-		_, exist := m.Listeners[subject]
+		_, exist := m.subscribers[subject]
 		m.ListenersLock.Unlock()
 
 		if exist {
 			m.ListenersLock.Lock()
-			m.Listeners[subject] = append(m.Listeners[subject], newChannel)
+			m.subscribers[subject] = append(m.subscribers[subject], newChannel)
 			m.ListenersLock.Unlock()
 
 			return newChannel, nil
 		}
 
 		m.ListenersLock.Lock()
-		m.Listeners[subject] = append(make([]chan models.Message, 0), newChannel)
+		m.subscribers[subject] = append(make([]chan models.Message, 0), newChannel)
 		m.ListenersLock.Unlock()
 
 		m.MessagesPerSubjectLock.Lock()

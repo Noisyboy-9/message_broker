@@ -16,7 +16,7 @@ type Broker interface {
 	// It should preserve the order. So if we are publishing messages
 	// A, B and C, all subscribers should get these messages as
 	// A, B and C.
-	Publish(ctx context.Context, subject string, msg models.Message) (int, error)
+	Publish(ctx context.Context, subject *models.Topic, msg *models.Message) (int, error)
 
 	// Subscribe listens to every publish, and returns the messages to all
 	// subscribed clients ( channels ).
