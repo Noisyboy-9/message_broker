@@ -100,7 +100,8 @@ func (s Server) Fetch(ctx context.Context, request *proto.FetchRequest) (*proto.
 	log.Println("Getting fetch request")
 	defer log.Println("Finish handling fetch request")
 
-	msg, err := s.BrokerInstance.Fetch(ctx, request.Subject, int(request.Id))
+	topic := models.GetTopicByName(s.Database, s.DatabaseContext, request.Subject)
+	msg, err := s.BrokerInstance.Fetch(ctx, topic, int(request.Id))
 
 	if err != nil {
 		MethodCount.WithLabelValues("fetch", "failed").Inc()
@@ -111,7 +112,5 @@ func (s Server) Fetch(ctx context.Context, request *proto.FetchRequest) (*proto.
 	MethodDuration.WithLabelValues("fetch_duration").Observe(float64(fetchDuration) / float64(time.Millisecond))
 	MethodCount.WithLabelValues("fetch", "successful").Inc()
 
-	return &proto.MessageResponse{
-		Body: []byte(msg.Body),
-	}, nil
+	return &proto.MessageResponse{Body: []byte(msg.Body)}, nil
 }

@@ -36,6 +36,20 @@ func (topic *Topic) Save(db *pgxpool.Pool, ctx context.Context) *Topic {
 	return topic
 }
 
+func (topic *Topic) Messages() (messages []*Message) {
+	if err := pgxscan.Select(
+		topic.dbCtx,
+		topic.db,
+		&messages,
+		"SELECT * FROM messages WHERE topic_id = $1",
+		topic.Id,
+	); err != nil {
+		log.Fatalf("something went wrong: %v", err)
+	}
+
+	return
+}
+
 func GetOrCreateTopicByName(dbConnection *pgxpool.Pool, dbCtx context.Context, name string) *Topic {
 	if TopicExist(dbConnection, dbCtx, name) {
 		return GetTopicByName(dbConnection, dbCtx, name)

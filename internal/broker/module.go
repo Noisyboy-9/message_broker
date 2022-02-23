@@ -71,15 +71,11 @@ func (m *Module) Fetch(_ context.Context, topic *models.Topic, id int) (models.M
 		return models.Message{}, broker.ErrUnavailable
 	}
 
-	for _, msg := range m.MessagesPerSubject[subject] {
+	for _, msg := range topic.Messages() {
 		if msg.Id == id {
-			// found the message check if it is expired or not
-			expireTime := m.MessageExpirationTime[msg]
-
-			if expireTime.After(time.Now()) {
-				return msg, nil
+			if msg.ExpiredAt.After(time.Now()) {
+				return *msg, nil
 			}
-
 			return models.Message{}, broker.ErrExpiredID
 		}
 	}

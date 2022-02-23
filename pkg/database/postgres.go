@@ -26,7 +26,7 @@ func connect() (*pgxpool.Pool, context.Context, error) {
 
 func migrate(database *pgxpool.Pool, ctx context.Context) (*pgxpool.Pool, context.Context) {
 	// create topics table
-	_, err := database.Exec(ctx, "CREATE DATABASE topics("+
+	_, err := database.Exec(ctx, "CREATE TABLE topics("+
 		"id INT NOT NULL PRIMARY KEY AUTO INCREMENT,"+
 		"name VARCHAR(255) NOT NULL UNIQUE,"+
 		"created_at TIMESTAMP NOT NULL,"+
@@ -38,7 +38,7 @@ func migrate(database *pgxpool.Pool, ctx context.Context) (*pgxpool.Pool, contex
 	}
 
 	// create users table
-	_, err = database.Exec(ctx, "CREATE DATABASE messages("+
+	_, err = database.Exec(ctx, "CREATE TABLE messages("+
 		"id INT NOT NULL PRIMARY KEY AUTO INCREMENT,"+
 		"topic_id INT NOT NULL PRIMARY KEY AUTO INCREMENT,"+
 		"body TEXT NOT NULL,"+
