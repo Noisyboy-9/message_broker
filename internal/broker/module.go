@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"therealbroker/pkg/broker"
-	"therealbroker/pkg/message"
+	"therealbroker/pkg/models"
 )
 
 type Module struct {
-	Listeners                 map[string][]chan message.Message
-	MessagesPerSubject        map[string][]message.Message
-	MessageExpirationTime     map[message.Message]time.Time
+	Listeners                 map[string][]chan models.Message
+	MessagesPerSubject        map[string][]models.Message
+	MessageExpirationTime     map[models.Message]time.Time
 	lastPublishId             int
 	IsClosed                  bool
 	ListenersLock             sync.Mutex
@@ -22,9 +22,9 @@ type Module struct {
 
 func NewModule() broker.Broker {
 	return &Module{
-		Listeners:                 make(map[string][]chan message.Message),
-		MessagesPerSubject:        make(map[string][]message.Message),
-		MessageExpirationTime:     make(map[message.Message]time.Time),
+		Listeners:                 make(map[string][]chan models.Message),
+		MessagesPerSubject:        make(map[string][]models.Message),
+		MessageExpirationTime:     make(map[models.Message]time.Time),
 		IsClosed:                  false,
 		ListenersLock:             sync.Mutex{},
 		MessagesPerSubjectLock:    sync.Mutex{},
@@ -41,33 +41,22 @@ func (m *Module) Close() error {
 	return nil
 }
 
-func (m *Module) Publish(ctx context.Context, subject string, msg message.Message) (int, error) {
+func (m *Module) Publish(ctx context.Context, topic *models.Topic, msg *models.Message) (int, error) {
 	if m.IsClosed {
 		return -1, broker.ErrUnavailable
 	}
-
-	m.MessageExpirationTimeLock.Lock()
-	m.MessageExpirationTime[msg] = time.Now().Add(msg.Expiration)
-	msg.SetId(m.lastPublishId + 1)
-	m.lastPublishId += 1
-	m.MessageExpirationTimeLock.Unlock()
-
-	m.MessagesPerSubjectLock.Lock()
-	m.MessagesPerSubject[subject] = append(m.MessagesPerSubject[subject], msg)
-	m.MessagesPerSubjectLock.Unlock()
-
-	for _, listener := range m.Listeners[subject] {
-		go func(listener chan message.Message) {
+	for _, listener := range m.Listeners[topic.Name] {
+		go func(listener chan models.Message) {
 			if cap(listener) != len(listener) {
-				listener <- msg
+				listener <- *msg
 			}
 		}(listener)
 	}
 
-	return msg.GetId(), nil
+	return msg.Id, nil
 }
 
-func (m *Module) Subscribe(ctx context.Context, subject string) (<-chan message.Message, error) {
+func (m *Module) Subscribe(ctx context.Context, subject string) (<-chan models.Message, error) {
 	if m.IsClosed {
 		return nil, broker.ErrUnavailable
 	}
@@ -76,7 +65,7 @@ func (m *Module) Subscribe(ctx context.Context, subject string) (<-chan message.
 	case <-ctx.Done():
 		return nil, broker.ErrExpiredID
 	default:
-		newChannel := make(chan message.Message, 100)
+		newChannel := make(chan models.Message, 100)
 
 		m.ListenersLock.Lock()
 		_, exist := m.Listeners[subject]
@@ -91,24 +80,24 @@ func (m *Module) Subscribe(ctx context.Context, subject string) (<-chan message.
 		}
 
 		m.ListenersLock.Lock()
-		m.Listeners[subject] = append(make([]chan message.Message, 0), newChannel)
+		m.Listeners[subject] = append(make([]chan models.Message, 0), newChannel)
 		m.ListenersLock.Unlock()
 
 		m.MessagesPerSubjectLock.Lock()
-		m.MessagesPerSubject[subject] = make([]message.Message, 0)
+		m.MessagesPerSubject[subject] = make([]models.Message, 0)
 		m.MessagesPerSubjectLock.Unlock()
 
 		return newChannel, nil
 	}
 }
 
-func (m *Module) Fetch(_ context.Context, subject string, id int) (message.Message, error) {
+func (m *Module) Fetch(_ context.Context, subject string, id int) (models.Message, error) {
 	if m.IsClosed {
-		return message.Message{}, broker.ErrUnavailable
+		return models.Message{}, broker.ErrUnavailable
 	}
 
 	for _, msg := range m.MessagesPerSubject[subject] {
-		if msg.GetId() == id {
+		if msg.Id == id {
 			// found the message check if it is expired or not
 			expireTime := m.MessageExpirationTime[msg]
 
@@ -116,9 +105,9 @@ func (m *Module) Fetch(_ context.Context, subject string, id int) (message.Messa
 				return msg, nil
 			}
 
-			return message.Message{}, broker.ErrExpiredID
+			return models.Message{}, broker.ErrExpiredID
 		}
 	}
 
-	return message.Message{}, broker.ErrInvalidID
+	return models.Message{}, broker.ErrInvalidID
 }
