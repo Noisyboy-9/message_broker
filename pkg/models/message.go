@@ -9,6 +9,7 @@ import (
 )
 
 type Message struct {
+	Model
 	Id        int
 	TopicID   int
 	Body      string
@@ -17,11 +18,12 @@ type Message struct {
 	DeletedAt time.Time
 }
 
-func (msg *Message) Save(db *pgxpool.Pool, ctx context.Context) *Message {
-	_, err := db.Exec(ctx, "INSERT INTO messages() VALUES ($1, $2, $3, $4, $5)", msg.TopicID, msg.Body, msg.CreatedAT, msg.ExpiredAt, msg.DeletedAt)
+func (msg *Message) Save() *Message {
+	_, err := msg.db.Exec(msg.dbCtx, "INSERT INTO messages() VALUES ($1, $2, $3, $4, $5)", msg.TopicID, msg.Body, msg.CreatedAT, msg.ExpiredAt, msg.DeletedAt)
 	if err != nil {
 		log.Fatalf("message write error: %v", err)
 	}
+
 	return msg
 }
 
@@ -29,6 +31,7 @@ func CreateMessage(db *pgxpool.Pool, ctx context.Context, topic *Topic, body str
 	expirationDuration := time.Duration(expirationSecondsCount) * time.Second
 
 	message := &Message{
+		Model:     Model{db: db, dbCtx: ctx},
 		TopicID:   topic.Id,
 		Body:      body,
 		CreatedAT: time.Now(),
@@ -36,5 +39,5 @@ func CreateMessage(db *pgxpool.Pool, ctx context.Context, topic *Topic, body str
 		DeletedAt: time.Time{},
 	}
 
-	return message.Save(db, ctx)
+	return message.Save()
 }

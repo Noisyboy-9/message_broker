@@ -11,6 +11,7 @@ import (
 )
 
 type Topic struct {
+	Model
 	Id        int
 	Name      string
 	CreatedAt time.Time
@@ -19,8 +20,8 @@ type Topic struct {
 }
 
 func (topic *Topic) Save(db *pgxpool.Pool, ctx context.Context) *Topic {
-	_, err := db.Exec(
-		ctx,
+	_, err := topic.db.Exec(
+		topic.dbCtx,
 		"INSERT INTO topics (name, created_at, updated_at, deleted_at) VALUES ($1, $2, $3, $4)",
 		topic.Name,
 		topic.CreatedAt,
@@ -42,6 +43,10 @@ func GetOrCreateTopicByName(dbConnection *pgxpool.Pool, dbCtx context.Context, n
 
 	// 	topic doesn't exist create and persist it
 	topic := Topic{
+		Model: Model{
+			db:    dbConnection,
+			dbCtx: dbCtx,
+		},
 		Name:      name,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -54,6 +59,9 @@ func GetTopicByName(db *pgxpool.Pool, ctx context.Context, name string) (topic *
 	if err := pgxscan.Select(ctx, db, &topic, "SELECT * FROM topics WHERE name = $1", name); err != nil {
 		log.Fatalf("get topic by name err %v", err)
 	}
+
+	topic.db = db
+	topic.dbCtx = ctx
 
 	return
 }
