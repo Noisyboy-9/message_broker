@@ -32,7 +32,7 @@ services:
     depends_on:
       - broker
 
-#  setup node-exporter
+#  bootstrap node-exporter
   node_exporter:
     image: prom/node-exporter
     container_name: node-exporter

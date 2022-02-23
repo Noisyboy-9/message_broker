@@ -1,4 +1,4 @@
-package main
+package bootstrap
 
 import (
 	"fmt"
@@ -32,7 +32,7 @@ var ActiveSubscribersGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 	Help: "Number of active subscribers",
 })
 
-func startPrometheusServer() {
+func StartPrometheusServer() {
 	if (prometheus.Register(MethodCount) != nil) || (prometheus.Register(MethodDuration) != nil) ||
 		(prometheus.Register(ActiveSubscribersGauge) != nil) {
 		fmt.Println("Some error with prometheus")

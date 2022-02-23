@@ -7,6 +7,7 @@ import (
 	"net"
 
 	"therealbroker/api/pb/api/proto"
+	"therealbroker/api/server/bootstrap"
 	broker2 "therealbroker/internal/broker"
 	"therealbroker/pkg/database"
 
@@ -22,7 +23,7 @@ var (
 )
 
 func init() {
-	go startPrometheusServer()
+	go bootstrap.StartPrometheusServer()
 	go func() {
 		db, dbContext = database.Setup()
 	}()
@@ -37,8 +38,10 @@ func main() {
 	}
 
 	server := grpc.NewServer()
-	proto.RegisterBrokerServer(server, &Server{
-		brokerInstance: broker2.NewModule(),
+	proto.RegisterBrokerServer(server, &bootstrap.Server{
+		BrokerInstance:  broker2.NewModule(),
+		Database:        db,
+		DatabaseContext: dbContext,
 	})
 
 	log.Printf("Server starting at: %s", listener.Addr())

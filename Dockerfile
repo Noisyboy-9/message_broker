@@ -1,6 +1,6 @@
 FROM golang
 
-# setup os
+# bootstrap os
 RUN apt -y update
 
 # install protoc
@@ -30,6 +30,6 @@ EXPOSE $PROMETHEUS_SERVER_PORT
 EXPOSE $BROKER_SERVER_PORT
 
 RUN go mod tidy
-# setup go-protc
+# bootstrap go-protc
 CMD go run ./api/server/main.go
 

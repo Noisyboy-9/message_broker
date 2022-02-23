@@ -1,4 +1,4 @@
-package main
+package bootstrap
 
 import (
 	"context"
@@ -11,11 +11,15 @@ import (
 	"therealbroker/api/pb/api/proto"
 	"therealbroker/pkg/broker"
 	"therealbroker/pkg/message"
+
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type Server struct {
 	proto.UnimplementedBrokerServer
-	brokerInstance broker.Broker
+	BrokerInstance  broker.Broker
+	Database        *pgxpool.Pool
+	DatabaseContext context.Context
 }
 
 func (s Server) Publish(ctx context.Context, request *proto.PublishRequest) (*proto.PublishResponse, error) {
@@ -23,7 +27,7 @@ func (s Server) Publish(ctx context.Context, request *proto.PublishRequest) (*pr
 	log.Println("Getting publish request")
 	defer log.Println("Finish handling publish request")
 
-	publishId, err := s.brokerInstance.Publish(ctx, request.Subject, message.Message{
+	publishId, err := s.BrokerInstance.Publish(ctx, request.Subject, message.Message{
 		Body:       string(request.Body),
 		Expiration: time.Duration(request.ExpirationSeconds),
 	})
@@ -45,7 +49,7 @@ func (s Server) Subscribe(request *proto.SubscribeRequest, server proto.Broker_S
 	fmt.Println("Subscriber request received.")
 	var subscribeError error
 
-	SubscribedChannel, err := s.brokerInstance.Subscribe(server.Context(), request.Subject)
+	SubscribedChannel, err := s.BrokerInstance.Subscribe(server.Context(), request.Subject)
 	if err != nil {
 		MethodCount.WithLabelValues("subscribe", "failed").Inc()
 		return err
@@ -94,7 +98,7 @@ func (s Server) Fetch(ctx context.Context, request *proto.FetchRequest) (*proto.
 	log.Println("Getting fetch request")
 	defer log.Println("Finish handling fetch request")
 
-	msg, err := s.brokerInstance.Fetch(ctx, request.Subject, int(request.Id))
+	msg, err := s.BrokerInstance.Fetch(ctx, request.Subject, int(request.Id))
 
 	if err != nil {
 		MethodCount.WithLabelValues("fetch", "failed").Inc()
