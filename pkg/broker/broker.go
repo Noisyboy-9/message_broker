@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"therealbroker/pkg/message"
+	"therealbroker/pkg/models"
 )
 
 // The whole implementation should be thread-safe
@@ -16,15 +16,15 @@ type Broker interface {
 	// It should preserve the order. So if we are publishing messages
 	// A, B and C, all subscribers should get these messages as
 	// A, B and C.
-	Publish(ctx context.Context, subject string, msg message.Message) (int, error)
+	Publish(ctx context.Context, subject string, msg models.Message) (int, error)
 
 	// Subscribe listens to every publish, and returns the messages to all
 	// subscribed clients ( channels ).
 	// If the context is cancelled, you have to stop sending messages
 	// to this subscriber. Do nothing on time-out
-	Subscribe(ctx context.Context, subject string) (<-chan message.Message, error)
+	Subscribe(ctx context.Context, subject string) (<-chan models.Message, error)
 
 	// Fetch enables us to retrieve a message that is already published, if
 	// it's not expired yet.
-	Fetch(ctx context.Context, subject string, id int) (message.Message, error)
+	Fetch(ctx context.Context, subject string, id int) (models.Message, error)
 }
