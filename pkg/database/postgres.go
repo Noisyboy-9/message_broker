@@ -11,12 +11,13 @@ import (
 func connect() (*pgxpool.Pool, context.Context, error) {
 	username := "postgres"
 	password := "postgres"
-	host := "localhost"
+	host := "db"
 	port := "5432"
 	dbName := "broker"
 	ctx := context.Background()
 
 	connectionString := fmt.Sprintf("user=%s password=%s host=%s port=%s dbname=%s sslmode=disable", username, password, host, port, dbName)
+
 	pool, err := pgxpool.Connect(ctx, connectionString)
 
 	if err != nil {
