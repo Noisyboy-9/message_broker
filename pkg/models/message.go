@@ -37,16 +37,25 @@ func (msg *Message) Save() *Message {
 }
 
 func CreateMessage(db *pgxpool.Pool, ctx context.Context, topic *Topic, body string, expirationSecondsCount int32) *Message {
-	expirationDuration := time.Duration(expirationSecondsCount) * time.Second
-
-	message := &Message{
+	return &Message{
 		Model:     Model{db: db, dbCtx: ctx},
 		TopicID:   topic.Id,
 		Body:      body,
 		CreatedAT: time.Now(),
-		ExpiredAt: time.Now().Add(expirationDuration),
+		ExpiredAt: time.Now().Add(100),
 		DeletedAt: time.Time{},
 	}
 
-	return message.Save()
+	// expirationDuration := time.Duration(expirationSecondsCount) * time.Second
+	//
+	// message := &Message{
+	// 	Model:     Model{db: db, dbCtx: ctx},
+	// 	TopicID:   topic.Id,
+	// 	Body:      body,
+	// 	CreatedAT: time.Now(),
+	// 	ExpiredAt: time.Now().Add(expirationDuration),
+	// 	DeletedAt: time.Time{},
+	// }
+	//
+	// return message.Save()
 }

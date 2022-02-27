@@ -12,8 +12,6 @@ import (
 	"therealbroker/pkg/broker"
 	"therealbroker/pkg/models"
 
-	"go.opentelemetry.io/otel"
-
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -25,16 +23,16 @@ type Server struct {
 }
 
 func (s Server) Publish(globalContext context.Context, request *proto.PublishRequest) (*proto.PublishResponse, error) {
-	globalContext, globalSpan := otel.Tracer("Server").Start(globalContext, "publish method")
+	// globalContext, globalSpan := otel.Tracer("Server").Start(globalContext, "publish method")
 	publishStartTime := time.Now()
 
-	_, topicSpan := otel.Tracer("Server").Start(globalContext, "Get or create topics by name")
+	// _, topicSpan := otel.Tracer("Server").Start(globalContext, "Get or create topics by name")
 	topic := models.GetOrCreateTopicByName(s.Database, s.DatabaseContext, request.Subject)
-	topicSpan.End()
+	// topicSpan.End()
 
-	_, msgSpan := otel.Tracer("Server").Start(globalContext, "create message")
+	// _, msgSpan := otel.Tracer("Server").Start(globalContext, "create message")
 	msg := models.CreateMessage(s.Database, s.DatabaseContext, topic, string(request.Body), request.ExpirationSeconds)
-	msgSpan.End()
+	// msgSpan.End()
 
 	publishId, err := s.BrokerInstance.Publish(globalContext, topic, msg)
 
@@ -49,7 +47,7 @@ func (s Server) Publish(globalContext context.Context, request *proto.PublishReq
 
 	MethodCount.WithLabelValues("publish", "successful").Inc()
 
-	globalSpan.End()
+	// globalSpan.End()
 	return &proto.PublishResponse{Id: int32(publishId)}, nil
 }
 
