@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -35,7 +36,7 @@ var ActiveSubscribersGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 func StartPrometheusServer() {
 	if (prometheus.Register(MethodCount) != nil) || (prometheus.Register(MethodDuration) != nil) ||
 		(prometheus.Register(ActiveSubscribersGauge) != nil) {
-		fmt.Println("Some error with prometheus")
+		log.Fatalf("Some error with prometheus")
 		return
 	}
 

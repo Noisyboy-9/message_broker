@@ -12,10 +12,12 @@ services:
       - postgress
 
   jaeger:
+    hostname: "jaeger"
     image: jaegertracing/all-in-one:latest
     ports:
       - "6831:6831/udp"
       - "16686:16686"
+      - "14268:14268"
 
   postgress:
     hostname: db
@@ -29,6 +31,7 @@ services:
       - "5432:5432"
 
   prometheus:
+    hostname: prometheus
     image: prom/prometheus:latest
     volumes:
       - ./prometheus:/etc/prometheus/
@@ -40,8 +43,6 @@ services:
       - '--web.console.templates=/usr/share/prometheus/consoles'
     ports:
       - "9090:9090"
-    depends_on:
-      - broker
 
   node_exporter:
     image: prom/node-exporter

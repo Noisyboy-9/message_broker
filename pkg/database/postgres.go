@@ -11,7 +11,7 @@ import (
 func connect() (*pgxpool.Pool, context.Context, error) {
 	username := "postgres"
 	password := "postgres"
-	host := "db"
+	host := "localhost"
 	port := "5432"
 	dbName := "broker"
 	ctx := context.Background()

@@ -12,6 +12,8 @@ import (
 	"therealbroker/pkg/broker"
 	"therealbroker/pkg/models"
 
+	"go.opentelemetry.io/otel"
+
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -22,18 +24,23 @@ type Server struct {
 	DatabaseContext context.Context
 }
 
-func (s Server) Publish(ctx context.Context, request *proto.PublishRequest) (*proto.PublishResponse, error) {
+func (s Server) Publish(globalContext context.Context, request *proto.PublishRequest) (*proto.PublishResponse, error) {
+	globalContext, globalSpan := otel.Tracer("Server").Start(globalContext, "publish method")
 	publishStartTime := time.Now()
-	log.Println("Getting publish request")
-	defer log.Println("Finish handling publish request")
 
+	_, topicSpan := otel.Tracer("Server").Start(globalContext, "Get or create topics by name")
 	topic := models.GetOrCreateTopicByName(s.Database, s.DatabaseContext, request.Subject)
-	msg := models.CreateMessage(s.Database, s.DatabaseContext, topic, string(request.Body), request.ExpirationSeconds)
+	topicSpan.End()
 
-	publishId, err := s.BrokerInstance.Publish(ctx, topic, msg)
+	_, msgSpan := otel.Tracer("Server").Start(globalContext, "create message")
+	msg := models.CreateMessage(s.Database, s.DatabaseContext, topic, string(request.Body), request.ExpirationSeconds)
+	msgSpan.End()
+
+	publishId, err := s.BrokerInstance.Publish(globalContext, topic, msg)
 
 	publishDuration := time.Since(publishStartTime)
-	MethodDuration.WithLabelValues("publish_duration").Observe(float64(publishDuration) / float64(time.Millisecond))
+	fmt.Println(publishDuration)
+	MethodDuration.WithLabelValues("publish_duration").Observe(float64(publishDuration) / float64(time.Nanosecond))
 
 	if err != nil {
 		MethodCount.WithLabelValues("publish", "failed").Inc()
@@ -41,6 +48,8 @@ func (s Server) Publish(ctx context.Context, request *proto.PublishRequest) (*pr
 	}
 
 	MethodCount.WithLabelValues("publish", "successful").Inc()
+
+	globalSpan.End()
 	return &proto.PublishResponse{Id: int32(publishId)}, nil
 }
 
@@ -109,7 +118,7 @@ func (s Server) Fetch(ctx context.Context, request *proto.FetchRequest) (*proto.
 	}
 
 	fetchDuration := time.Since(fetchStartTime)
-	MethodDuration.WithLabelValues("fetch_duration").Observe(float64(fetchDuration) / float64(time.Millisecond))
+	MethodDuration.WithLabelValues("fetch_duration").Observe(float64(fetchDuration) / float64(time.Nanosecond))
 	MethodCount.WithLabelValues("fetch", "successful").Inc()
 
 	return &proto.MessageResponse{Body: []byte(msg.Body)}, nil

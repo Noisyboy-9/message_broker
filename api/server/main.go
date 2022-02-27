@@ -25,6 +25,7 @@ var (
 func init() {
 	go bootstrap.StartPrometheusServer()
 	db, dbContext = database.Setup()
+	// exporter.Register()
 }
 
 func main() {
@@ -36,6 +37,7 @@ func main() {
 	}
 
 	server := grpc.NewServer()
+
 	proto.RegisterBrokerServer(server, &bootstrap.Server{
 		BrokerInstance:  broker2.NewModule(),
 		Database:        db,

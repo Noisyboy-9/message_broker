@@ -14,6 +14,9 @@ RUN apt install -y build-essential
 
 WORKDIR ./message_broker
 
+COPY go.mod .
+RUN go mod tidy
+
 COPY . .
 
 ENV PROMETHEUS_SERVER_PORT=8000
@@ -22,7 +25,6 @@ ENV BROKER_SERVER_PORT=9000
 EXPOSE $PROMETHEUS_SERVER_PORT
 EXPOSE $BROKER_SERVER_PORT
 
-RUN go mod tidy
 # bootstrap go-protc
 CMD go run ./api/server/main.go
 
