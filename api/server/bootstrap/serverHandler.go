@@ -22,41 +22,18 @@ type Server struct {
 	BrokerInstance  broker.Broker
 	Database        *pgxpool.Pool
 	DatabaseContext context.Context
-
-	LastCreatedTopicIdLock *sync.Mutex
-	LastCreatedTopicId     int
-
-	LastPublishedMessageIdLock *sync.Mutex
-	LastPublishedMessageId     int
 }
 
-func (s *Server) Publish(globalContext context.Context, request *proto.PublishRequest) (*proto.PublishResponse, error) {
+func (s Server) Publish(globalContext context.Context, request *proto.PublishRequest) (*proto.PublishResponse, error) {
 	globalContext, globalSpan := otel.Tracer("Server").Start(globalContext, "publish method")
 	publishStartTime := time.Now()
 
-	s.LastCreatedTopicIdLock.Lock()
-	newTopicId := s.LastCreatedTopicId + 1
-	s.LastCreatedTopicId += 1
-	s.LastCreatedTopicIdLock.Unlock()
-
-	topicSpanContext, topicSpan := otel.Tracer("Server").Start(globalContext, "Get or create topics by name")
-	topic := models.GetOrCreateTopicByName(
-		s.Database,
-		s.DatabaseContext,
-		request.Subject,
-		newTopicId,
-		s.LastCreatedTopicIdLock,
-		topicSpanContext,
-	)
+	_, topicSpan := otel.Tracer("Server").Start(globalContext, "Get or create topics by name")
+	topic := models.GetOrCreateTopicByName(s.Database, s.DatabaseContext, request.Subject)
 	topicSpan.End()
 
-	s.LastPublishedMessageIdLock.Lock()
-	newMessageId := s.LastPublishedMessageId + 1
-	s.LastPublishedMessageId += 1
-	s.LastPublishedMessageIdLock.Unlock()
-
 	_, msgSpan := otel.Tracer("Server").Start(globalContext, "create message")
-	msg := models.CreateMessage(s.Database, s.DatabaseContext, topic, string(request.Body), request.ExpirationSeconds, newMessageId, s.LastPublishedMessageIdLock)
+	msg := models.CreateMessage(s.Database, s.DatabaseContext, topic, string(request.Body), request.ExpirationSeconds)
 	msgSpan.End()
 
 	publishId, err := s.BrokerInstance.Publish(globalContext, topic, msg)
@@ -76,7 +53,7 @@ func (s *Server) Publish(globalContext context.Context, request *proto.PublishRe
 	return &proto.PublishResponse{Id: int32(publishId)}, nil
 }
 
-func (s *Server) Subscribe(request *proto.SubscribeRequest, server proto.Broker_SubscribeServer) error {
+func (s Server) Subscribe(request *proto.SubscribeRequest, server proto.Broker_SubscribeServer) error {
 	fmt.Println("Subscriber request received.")
 	var subscribeError error
 
@@ -126,7 +103,7 @@ func (s *Server) Subscribe(request *proto.SubscribeRequest, server proto.Broker_
 	return subscribeError
 }
 
-func (s *Server) Fetch(ctx context.Context, request *proto.FetchRequest) (*proto.MessageResponse, error) {
+func (s Server) Fetch(ctx context.Context, request *proto.FetchRequest) (*proto.MessageResponse, error) {
 	fetchStartTime := time.Now()
 
 	log.Println("Getting fetch request")

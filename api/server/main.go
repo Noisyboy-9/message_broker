@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"sync"
 
 	"therealbroker/api/pb/api/proto"
 	"therealbroker/api/server/bootstrap"
@@ -41,13 +40,9 @@ func main() {
 	server := grpc.NewServer()
 
 	proto.RegisterBrokerServer(server, &bootstrap.Server{
-		BrokerInstance:             broker2.NewModule(),
-		Database:                   db,
-		DatabaseContext:            dbContext,
-		LastCreatedTopicIdLock:     &sync.Mutex{},
-		LastCreatedTopicId:         0,
-		LastPublishedMessageIdLock: &sync.Mutex{},
-		LastPublishedMessageId:     0,
+		BrokerInstance:  broker2.NewModule(),
+		Database:        db,
+		DatabaseContext: dbContext,
 	})
 
 	log.Printf("Server starting at: %s", listener.Addr())
