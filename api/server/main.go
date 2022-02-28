@@ -8,6 +8,7 @@ import (
 
 	"therealbroker/api/pb/api/proto"
 	"therealbroker/api/server/bootstrap"
+	"therealbroker/exporter"
 	broker2 "therealbroker/internal/broker"
 	"therealbroker/pkg/database"
 
@@ -25,7 +26,7 @@ var (
 func init() {
 	go bootstrap.StartPrometheusServer()
 	db, dbContext = database.Setup()
-	// exporter.Register()
+	exporter.Register()
 }
 
 func main() {

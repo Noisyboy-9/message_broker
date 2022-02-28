@@ -51,7 +51,12 @@ func (topic *Topic) Messages() (messages []*Message) {
 }
 
 func GetOrCreateTopicByName(dbConnection *pgxpool.Pool, dbCtx context.Context, name string) *Topic {
-	return &Topic{
+	if TopicExist(dbConnection, dbCtx, name) {
+		return GetTopicByName(dbConnection, dbCtx, name)
+	}
+
+	// 	topic doesn't exist create and persist it
+	topic := Topic{
 		Model: Model{
 			db:    dbConnection,
 			dbCtx: dbCtx,
@@ -61,22 +66,7 @@ func GetOrCreateTopicByName(dbConnection *pgxpool.Pool, dbCtx context.Context, n
 		UpdatedAt: time.Now(),
 	}
 
-	// if TopicExist(dbConnection, dbCtx, name) {
-	// 	return GetTopicByName(dbConnection, dbCtx, name)
-	// }
-	//
-	// // 	topic doesn't exist create and persist it
-	// topic := Topic{
-	// 	Model: Model{
-	// 		db:    dbConnection,
-	// 		dbCtx: dbCtx,
-	// 	},
-	// 	Name:      name,
-	// 	CreatedAt: time.Now(),
-	// 	UpdatedAt: time.Now(),
-	// }
-	//
-	// return topic.Save(dbConnection, dbCtx)
+	return topic.Save(dbConnection, dbCtx)
 }
 
 func GetTopicByName(db *pgxpool.Pool, ctx context.Context, name string) *Topic {

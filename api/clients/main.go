@@ -35,7 +35,7 @@ func main() {
 	ctx := context.Background()
 
 	var wg sync.WaitGroup
-	ticker := time.NewTicker(10 * time.Microsecond) // 0.5 billion request in 20 minutes
+	ticker := time.NewTicker(150 * time.Microsecond) // 0.5 billion request in 20 minutes
 
 	doneIndicator := make(chan bool)
 
