@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 
 	"therealbroker/api/pb/api/proto"
 	"therealbroker/api/server/bootstrap"
@@ -43,6 +44,10 @@ func main() {
 		BrokerInstance:  broker2.NewModule(),
 		Database:        db,
 		DatabaseContext: dbContext,
+		LastPublishLock: &sync.Mutex{},
+		LastTopicLock:   &sync.Mutex{},
+		LastPublishId:   0,
+		LastTopicId:     0,
 	})
 
 	log.Printf("Server starting at: %s", listener.Addr())

@@ -64,7 +64,7 @@ func main() {
 }
 
 func pushToSubject(client proto.BrokerClient, ctx context.Context, subject string, body string, expire int) {
-	_, err := client.Publish(ctx, &proto.PublishRequest{
+	response, err := client.Publish(ctx, &proto.PublishRequest{
 		Subject:           subject,
 		Body:              []byte(body),
 		ExpirationSeconds: int32(expire),
@@ -73,4 +73,6 @@ func pushToSubject(client proto.BrokerClient, ctx context.Context, subject strin
 	if err != nil {
 		log.Fatalf("publish to subject failed: %s", err)
 	}
+
+	log.Println("response Id: ", response.Id)
 }

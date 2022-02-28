@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
@@ -20,14 +21,15 @@ type Topic struct {
 }
 
 func (topic *Topic) Save(db *pgxpool.Pool, ctx context.Context) *Topic {
-	err := topic.db.QueryRow(
+	_, err := topic.db.Exec(
 		topic.dbCtx,
-		"INSERT INTO topics (name, created_at, updated_at, deleted_at) VALUES ($1, $2, $3, $4) RETURNING id",
+		"INSERT INTO topics (id, name, created_at, updated_at, deleted_at) VALUES ($1, $2, $3, $4, $5)",
+		topic.Id,
 		topic.Name,
 		topic.CreatedAt,
 		topic.UpdatedAt,
 		topic.DeletedAt,
-	).Scan(&topic.Id)
+	)
 
 	if err != nil {
 		log.Fatalf("topic save err: %v", err)
@@ -50,13 +52,16 @@ func (topic *Topic) Messages() (messages []*Message) {
 	return
 }
 
-func GetOrCreateTopicByName(dbConnection *pgxpool.Pool, dbCtx context.Context, name string) *Topic {
+func GetOrCreateTopicByName(dbConnection *pgxpool.Pool, dbCtx context.Context, name string, lastTopicId *int, lock *sync.Mutex) *Topic {
 	if TopicExist(dbConnection, dbCtx, name) {
 		return GetTopicByName(dbConnection, dbCtx, name)
 	}
 
 	// 	topic doesn't exist create and persist it
+	lock.Lock()
+	*lastTopicId += 1
 	topic := Topic{
+		Id: *lastTopicId,
 		Model: Model{
 			db:    dbConnection,
 			dbCtx: dbCtx,
@@ -65,6 +70,7 @@ func GetOrCreateTopicByName(dbConnection *pgxpool.Pool, dbCtx context.Context, n
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
+	lock.Unlock()
 
 	return topic.Save(dbConnection, dbCtx)
 }

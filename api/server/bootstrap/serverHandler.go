@@ -22,18 +22,23 @@ type Server struct {
 	BrokerInstance  broker.Broker
 	Database        *pgxpool.Pool
 	DatabaseContext context.Context
+
+	LastPublishLock *sync.Mutex
+	LastTopicLock   *sync.Mutex
+	LastPublishId   int
+	LastTopicId     int
 }
 
-func (s Server) Publish(globalContext context.Context, request *proto.PublishRequest) (*proto.PublishResponse, error) {
+func (s *Server) Publish(globalContext context.Context, request *proto.PublishRequest) (*proto.PublishResponse, error) {
 	globalContext, globalSpan := otel.Tracer("Server").Start(globalContext, "publish method")
 	publishStartTime := time.Now()
 
 	_, topicSpan := otel.Tracer("Server").Start(globalContext, "Get or create topics by name")
-	topic := models.GetOrCreateTopicByName(s.Database, s.DatabaseContext, request.Subject)
+	topic := models.GetOrCreateTopicByName(s.Database, s.DatabaseContext, request.Subject, &s.LastTopicId, s.LastTopicLock)
 	topicSpan.End()
 
 	_, msgSpan := otel.Tracer("Server").Start(globalContext, "create message")
-	msg := models.CreateMessage(s.Database, s.DatabaseContext, topic, string(request.Body), request.ExpirationSeconds)
+	msg := models.CreateMessage(s.Database, s.DatabaseContext, topic, string(request.Body), request.ExpirationSeconds, &s.LastPublishId, s.LastPublishLock)
 	msgSpan.End()
 
 	publishId, err := s.BrokerInstance.Publish(globalContext, topic, msg)
@@ -53,7 +58,7 @@ func (s Server) Publish(globalContext context.Context, request *proto.PublishReq
 	return &proto.PublishResponse{Id: int32(publishId)}, nil
 }
 
-func (s Server) Subscribe(request *proto.SubscribeRequest, server proto.Broker_SubscribeServer) error {
+func (s *Server) Subscribe(request *proto.SubscribeRequest, server proto.Broker_SubscribeServer) error {
 	fmt.Println("Subscriber request received.")
 	var subscribeError error
 
@@ -103,7 +108,7 @@ func (s Server) Subscribe(request *proto.SubscribeRequest, server proto.Broker_S
 	return subscribeError
 }
 
-func (s Server) Fetch(ctx context.Context, request *proto.FetchRequest) (*proto.MessageResponse, error) {
+func (s *Server) Fetch(ctx context.Context, request *proto.FetchRequest) (*proto.MessageResponse, error) {
 	fetchStartTime := time.Now()
 
 	log.Println("Getting fetch request")
