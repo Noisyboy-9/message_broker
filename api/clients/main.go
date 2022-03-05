@@ -35,7 +35,7 @@ func main() {
 	ctx := context.Background()
 
 	var wg sync.WaitGroup
-	ticker := time.NewTicker(150 * time.Microsecond) // 0.5 billion request in 20 minutes
+	ticker := time.NewTicker(10 * time.Microsecond) // 0.5 billion request in 20 minutes
 
 	doneIndicator := make(chan bool)
 
@@ -64,7 +64,7 @@ func main() {
 }
 
 func pushToSubject(client proto.BrokerClient, ctx context.Context, subject string, body string, expire int) {
-	response, err := client.Publish(ctx, &proto.PublishRequest{
+	_, err := client.Publish(ctx, &proto.PublishRequest{
 		Subject:           subject,
 		Body:              []byte(body),
 		ExpirationSeconds: int32(expire),
@@ -74,5 +74,5 @@ func pushToSubject(client proto.BrokerClient, ctx context.Context, subject strin
 		log.Fatalf("publish to subject failed: %s", err)
 	}
 
-	log.Println("response Id: ", response.Id)
+	// log.Println("response Id: ", response.Id)
 }

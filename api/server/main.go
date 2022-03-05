@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 	"sync"
+	"time"
 
 	"therealbroker/api/pb/api/proto"
 	"therealbroker/api/server/bootstrap"
-	"therealbroker/exporter"
 	broker2 "therealbroker/internal/broker"
 	"therealbroker/pkg/database"
 
@@ -27,7 +28,7 @@ var (
 func init() {
 	go bootstrap.StartPrometheusServer()
 	db, dbContext = database.Setup()
-	exporter.Register()
+	// exporter.Register()
 }
 
 func main() {
@@ -40,15 +41,42 @@ func main() {
 
 	server := grpc.NewServer()
 
-	proto.RegisterBrokerServer(server, &bootstrap.Server{
-		BrokerInstance:  broker2.NewModule(),
-		Database:        db,
-		DatabaseContext: dbContext,
-		LastPublishLock: &sync.Mutex{},
-		LastTopicLock:   &sync.Mutex{},
-		LastPublishId:   0,
-		LastTopicId:     0,
-	})
+	batchBuilder := &strings.Builder{}
+	batchBuilder.WriteString("INSERT INTO messages(id, topic_id, body) VALUES ")
+	batchBuilder.Grow(5 * 1e6)
+	proto.RegisterBrokerServer(
+		server,
+		&bootstrap.Server{
+			BrokerInstance:     broker2.NewModule(),
+			Database:           db,
+			DatabaseContext:    dbContext,
+			LastPublishLock:    &sync.Mutex{},
+			LastTopicLock:      &sync.Mutex{},
+			LastPublishId:      0,
+			LastTopicId:        0,
+			MessageBatchString: batchBuilder,
+		},
+	)
+
+	go func() {
+		for {
+			time.Sleep(3 * time.Second)
+			if batchBuilder.Len() == 48 {
+				continue
+			}
+
+			query := batchBuilder.String()[:len(batchBuilder.String())-1]
+			query += ";"
+
+			_, err := db.Exec(dbContext, query)
+			if err != nil {
+				log.Fatalf("some err in batcher: %v", err)
+			}
+
+			batchBuilder = &strings.Builder{}
+			batchBuilder.WriteString("INSERT INTO messages(id, topic_id, body) VALUES ")
+		}
+	}()
 
 	log.Printf("Server starting at: %s", listener.Addr())
 

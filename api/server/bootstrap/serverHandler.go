@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,6 +28,8 @@ type Server struct {
 	LastTopicLock   *sync.Mutex
 	LastPublishId   int
 	LastTopicId     int
+
+	MessageBatchString *strings.Builder
 }
 
 func (s *Server) Publish(globalContext context.Context, request *proto.PublishRequest) (*proto.PublishResponse, error) {
@@ -38,13 +41,12 @@ func (s *Server) Publish(globalContext context.Context, request *proto.PublishRe
 	topicSpan.End()
 
 	_, msgSpan := otel.Tracer("Server").Start(globalContext, "create message")
-	msg := models.CreateMessage(s.Database, s.DatabaseContext, topic, string(request.Body), request.ExpirationSeconds, &s.LastPublishId, s.LastPublishLock)
+	msg := models.CreateMessage(s.Database, s.DatabaseContext, topic, string(request.Body), &s.LastPublishId, s.LastPublishLock, s.MessageBatchString)
 	msgSpan.End()
 
 	publishId, err := s.BrokerInstance.Publish(globalContext, topic, msg)
 
 	publishDuration := time.Since(publishStartTime)
-	fmt.Println(publishDuration)
 	MethodDuration.WithLabelValues("publish_duration").Observe(float64(publishDuration) / float64(time.Nanosecond))
 
 	if err != nil {

@@ -2,57 +2,42 @@ package models
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"strings"
 	"sync"
-	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type Message struct {
 	Model
-	Id        int
-	TopicID   int
-	Body      string
-	CreatedAT time.Time
-	ExpiredAt time.Time
-	DeletedAt time.Time
+	Id      int
+	TopicID int
+	Body    string
 }
 
-func (msg *Message) Save() *Message {
-	_, err := msg.db.Exec(
-		msg.dbCtx,
-		"INSERT INTO messages(id, topic_id, body, created_at, expired_at, deleted_at) VALUES ($1, $2, $3, $4, $5, $6)",
+func (msg *Message) Save(b *strings.Builder) *Message {
+	query := fmt.Sprintf(
+		"(%d, %d, '%s'),",
 		msg.Id,
 		msg.TopicID,
-		msg.Body,
-		msg.CreatedAT,
-		msg.ExpiredAt,
-		msg.DeletedAt,
+		"some body for testing",
 	)
-
-	if err != nil {
-		log.Fatalf("message save err: %v", err)
-	}
+	b.WriteString(query)
 
 	return msg
 }
 
-func CreateMessage(db *pgxpool.Pool, ctx context.Context, topic *Topic, body string, expirationSecondsCount int32, lastId *int, lock *sync.Mutex) *Message {
-	expirationDuration := time.Duration(expirationSecondsCount) * time.Second
-
+func CreateMessage(db *pgxpool.Pool, ctx context.Context, topic *Topic, body string, lastId *int, lock *sync.Mutex, builder *strings.Builder) *Message {
 	lock.Lock()
 	*lastId += 1
 	message := &Message{
-		Id:        *lastId,
-		Model:     Model{db: db, dbCtx: ctx},
-		TopicID:   topic.Id,
-		Body:      body,
-		CreatedAT: time.Now(),
-		ExpiredAt: time.Now().Add(expirationDuration),
-		DeletedAt: time.Time{},
+		Id:      *lastId,
+		Model:   Model{db: db, dbCtx: ctx},
+		TopicID: topic.Id,
+		Body:    body,
 	}
 	lock.Unlock()
 
-	return message.Save()
+	return message.Save(builder)
 }

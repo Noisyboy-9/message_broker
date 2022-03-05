@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"sync"
-	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4"
@@ -13,22 +12,16 @@ import (
 
 type Topic struct {
 	Model
-	Id        int
-	Name      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt time.Time
+	Id   int
+	Name string
 }
 
 func (topic *Topic) Save(db *pgxpool.Pool, ctx context.Context) *Topic {
 	_, err := topic.db.Exec(
 		topic.dbCtx,
-		"INSERT INTO topics (id, name, created_at, updated_at, deleted_at) VALUES ($1, $2, $3, $4, $5)",
+		"INSERT INTO topics (id, name) VALUES ($1, $2)",
 		topic.Id,
 		topic.Name,
-		topic.CreatedAt,
-		topic.UpdatedAt,
-		topic.DeletedAt,
 	)
 
 	if err != nil {
@@ -53,31 +46,38 @@ func (topic *Topic) Messages() (messages []*Message) {
 }
 
 func GetOrCreateTopicByName(dbConnection *pgxpool.Pool, dbCtx context.Context, name string, lastTopicId *int, lock *sync.Mutex) *Topic {
-	if TopicExist(dbConnection, dbCtx, name) {
-		return GetTopicByName(dbConnection, dbCtx, name)
-	}
-
-	// 	topic doesn't exist create and persist it
-	lock.Lock()
-	*lastTopicId += 1
-	topic := Topic{
-		Id: *lastTopicId,
+	return &Topic{
+		Id: 1,
 		Model: Model{
 			db:    dbConnection,
 			dbCtx: dbCtx,
 		},
-		Name:      name,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		Name: name,
 	}
-	lock.Unlock()
 
-	return topic.Save(dbConnection, dbCtx)
+	// if TopicExist(dbConnection, dbCtx, name) {
+	// 	return GetTopicByName(dbConnection, dbCtx, name)
+	// }
+
+	// 	topic doesn't exist create and persist it
+	// lock.Lock()
+	// *lastTopicId += 1
+	// topic := Topic{
+	// 	Id: *lastTopicId,
+	// 	Model: Model{
+	// 		db:    dbConnection,
+	// 		dbCtx: dbCtx,
+	// 	},
+	// 	Name: name,
+	// }
+	// lock.Unlock()
+
+	// return topic.Save(dbConnection, dbCtx)
 }
 
 func GetTopicByName(db *pgxpool.Pool, ctx context.Context, name string) *Topic {
 	topic := &Topic{}
-	err := db.QueryRow(ctx, "SELECT * FROM topics WHERE name = $1", name).Scan(&topic.Id, &topic.Name, &topic.CreatedAt, &topic.UpdatedAt, &topic.DeletedAt)
+	err := db.QueryRow(ctx, "SELECT * FROM topics WHERE name = $1", name).Scan(&topic.Id, &topic.Name)
 
 	if err != nil {
 		log.Fatalf("get topic by name read err: %v", err)

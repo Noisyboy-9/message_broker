@@ -3,7 +3,6 @@ package broker
 import (
 	"context"
 	"sync"
-	"time"
 
 	"therealbroker/pkg/broker"
 	"therealbroker/pkg/models"
@@ -73,10 +72,7 @@ func (m *Module) Fetch(_ context.Context, topic *models.Topic, id int) (models.M
 
 	for _, msg := range topic.Messages() {
 		if msg.Id == id {
-			if msg.ExpiredAt.After(time.Now()) {
-				return *msg, nil
-			}
-			return models.Message{}, broker.ErrExpiredID
+			return *msg, nil
 		}
 	}
 

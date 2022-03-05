@@ -43,10 +43,7 @@ func migrate(database *pgxpool.Pool, ctx context.Context) (*pgxpool.Pool, contex
 
 	_, err = database.Exec(ctx, "CREATE TABLE topics("+
 		"id INT NOT NULL PRIMARY KEY,"+
-		"name VARCHAR(255) NOT NULL UNIQUE,"+
-		"created_at TIMESTAMP NOT NULL,"+
-		"updated_at TIMESTAMP NOT NULL,"+
-		"deleted_at TIMESTAMP"+
+		"name VARCHAR(255) NOT NULL UNIQUE"+
 		")")
 
 	if err != nil {
@@ -61,10 +58,7 @@ func migrate(database *pgxpool.Pool, ctx context.Context) (*pgxpool.Pool, contex
 	_, err = database.Exec(ctx, "CREATE TABLE messages("+
 		"id INT NOT NULL PRIMARY KEY,"+
 		"topic_id INT NOT NULL,"+
-		"body TEXT NOT NULL,"+
-		"created_at TIMESTAMP NOT NULL,"+
-		"expired_at TIMESTAMP NOT NULL,"+
-		"deleted_at TIMESTAMP"+
+		"body TEXT NOT NULL"+
 		")")
 	if err != nil {
 		log.Fatalf("messages migration err: %v", err)
