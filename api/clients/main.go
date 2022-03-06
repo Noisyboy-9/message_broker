@@ -18,7 +18,7 @@ var (
 )
 
 func main() {
-	connection, err := grpc.Dial("localhost:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	connection, err := grpc.Dial("localhost:10000", grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	if err != nil {
 		log.Fatalf("can't connect to server: %v", err)
@@ -34,8 +34,10 @@ func main() {
 	client := proto.NewBrokerClient(connection)
 	ctx := context.Background()
 
+	// pushToSubject(client, ctx, subject, "some body for testing", int(10*time.Hour))
+
 	var wg sync.WaitGroup
-	ticker := time.NewTicker(10 * time.Microsecond) // 0.5 billion request in 20 minutes
+	ticker := time.NewTicker(1 * time.Second) // 0.5 billion request in 20 minutes
 
 	doneIndicator := make(chan bool)
 

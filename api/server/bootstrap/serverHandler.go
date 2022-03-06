@@ -34,6 +34,7 @@ type Server struct {
 }
 
 func (s *Server) Publish(globalContext context.Context, request *proto.PublishRequest) (*proto.PublishResponse, error) {
+	log.Println("inside publish function")
 	globalContext, globalSpan := otel.Tracer("Server").Start(globalContext, "publish method")
 	publishStartTime := time.Now()
 
