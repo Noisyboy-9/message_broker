@@ -41,26 +41,18 @@ func main() {
 
 	server := grpc.NewServer()
 
+	batchNotifier := make(chan struct{})
+	batchNotifierPointer := &batchNotifier
+
 	batchBuilder := &strings.Builder{}
 	batchBuilder.WriteString("INSERT INTO messages(id, topic_id, body) VALUES ")
 	batchBuilder.Grow(5 * 1e6)
-	proto.RegisterBrokerServer(
-		server,
-		&bootstrap.Server{
-			BrokerInstance:     broker2.NewModule(),
-			Database:           db,
-			DatabaseContext:    dbContext,
-			LastPublishLock:    &sync.Mutex{},
-			LastTopicLock:      &sync.Mutex{},
-			LastPublishId:      0,
-			LastTopicId:        0,
-			MessageBatchString: batchBuilder,
-		},
-	)
 
 	go func() {
 		for {
-			time.Sleep(3 * time.Second)
+			newChannel := make(chan struct{})
+			time.Sleep(100 * time.Millisecond)
+
 			if batchBuilder.Len() == 48 {
 				continue
 			}
@@ -72,11 +64,28 @@ func main() {
 			if err != nil {
 				log.Fatalf("some err in batcher: %v", err)
 			}
+			close(*batchNotifierPointer)
+			*batchNotifierPointer = newChannel
 
-			batchBuilder = &strings.Builder{}
+			*batchBuilder = strings.Builder{}
 			batchBuilder.WriteString("INSERT INTO messages(id, topic_id, body) VALUES ")
 		}
 	}()
+
+	proto.RegisterBrokerServer(
+		server,
+		&bootstrap.Server{
+			BrokerInstance:       broker2.NewModule(),
+			Database:             db,
+			DatabaseContext:      dbContext,
+			LastPublishLock:      &sync.Mutex{},
+			LastTopicLock:        &sync.Mutex{},
+			LastPublishId:        0,
+			LastTopicId:          0,
+			MessageBatchString:   batchBuilder,
+			BatchNotifierPointer: batchNotifierPointer,
+		},
+	)
 
 	log.Printf("Server starting at: %s", listener.Addr())
 

@@ -56,7 +56,7 @@ func migrate(database *pgxpool.Pool, ctx context.Context) (*pgxpool.Pool, contex
 		log.Fatalf("drop table topics err: %v", err)
 	}
 	_, err = database.Exec(ctx, "CREATE TABLE messages("+
-		"id INT NOT NULL PRIMARY KEY,"+
+		"id INT NOT NULL,"+
 		"topic_id INT NOT NULL,"+
 		"body TEXT NOT NULL"+
 		")")

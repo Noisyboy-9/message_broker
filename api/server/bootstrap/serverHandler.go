@@ -29,7 +29,8 @@ type Server struct {
 	LastPublishId   int
 	LastTopicId     int
 
-	MessageBatchString *strings.Builder
+	MessageBatchString   *strings.Builder
+	BatchNotifierPointer *chan struct{}
 }
 
 func (s *Server) Publish(globalContext context.Context, request *proto.PublishRequest) (*proto.PublishResponse, error) {
@@ -57,6 +58,8 @@ func (s *Server) Publish(globalContext context.Context, request *proto.PublishRe
 	MethodCount.WithLabelValues("publish", "successful").Inc()
 
 	globalSpan.End()
+
+	<-*s.BatchNotifierPointer
 	return &proto.PublishResponse{Id: int32(publishId)}, nil
 }
 
