@@ -46,7 +46,7 @@ func main() {
 
 	batchBuilder := &strings.Builder{}
 	batchBuilder.WriteString("INSERT INTO messages(id, topic_id, body) VALUES ")
-	batchBuilder.Grow(5 * 1e6)
+	batchBuilder.Grow(5 * 1e8)
 
 	go func() {
 		for {
@@ -60,15 +60,16 @@ func main() {
 			query := batchBuilder.String()[:len(batchBuilder.String())-1]
 			query += ";"
 
-			_, err := db.Exec(dbContext, query)
-			if err != nil {
-				log.Fatalf("some err in batcher: %v", err)
-			}
+			// _, err := db.Exec(dbContext, query)
+			// if err != nil {
+			// 	log.Fatalf("some err in batcher: %v", err)
+			//
+			// }
 			close(*batchNotifierPointer)
 			*batchNotifierPointer = newChannel
 
-			*batchBuilder = strings.Builder{}
-			batchBuilder.WriteString("INSERT INTO messages(id, topic_id, body) VALUES ")
+			// *batchBuilder = strings.Builder{}
+			// batchBuilder.WriteString("INSERT INTO messages(id, topic_id, body) VALUES ")
 		}
 	}()
 

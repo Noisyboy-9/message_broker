@@ -7,61 +7,49 @@ admin:
 
 static_resources:
   listeners:
-  - name: message_broker_listener
-    address:
-      socket_address:
-        address: 0.0.0.0
-        port_value: 10000
-    filter_chains:
-    - filters:
-      - name: envoy.filters.network.http_connection_manager
-        typed_config:
-          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
-          stat_prefix: ingress_http
-          http_filters:
-            - name: envoy.filters.http.local_ratelimit
+    - name: broker_listener
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 10000
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
               typed_config:
-                "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
-                stat_prefix: http_local_rate_limiter
-            - name: envoy.filters.http.router
-          route_config:
-            name: local_route
-            virtual_hosts:
-              - name: local_service
-                domains: [ "*" ]
-                routes:
-                  - match: { prefix: "/" }
-                    route: { cluster:  message_broker_cluster }
-                    typed_per_filter_config:
-                      envoy.filters.http.local_ratelimit:
-                        "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
-                        stat_prefix: message_broker_rate_limiter
-                        token_bucket:
-                          max_tokens: 10000
-                          tokens_per_fill: 2000
-                          fill_interval: 1s
-                        filter_enabled:
-                          runtime_key: local_rate_limit_enabled
-                          default_value:
-                            numerator: 100
-                            denominator: HUNDRED
-                        filter_enforced:
-                          runtime_key: local_rate_limit_enforced
-                          default_value:
-                            numerator: 100
-                            denominator: HUNDRED
-                        response_headers_to_add:
-                          - append: false
-                            header:
-                              key: x-local-rate-limit
-                              value: 'true'
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress_http
+                route_config:
+                  name: local_route
+                  virtual_hosts:
+                    - name: namespace.local_service
+                      domains: [ "*" ]
+                      routes:
+                        - match:
+                            prefix: /
+                          route:
+                            cluster: message_broker_cluster
+                            rate_limits:
+                             - actions:
+                                  - {generic_key: {descriptor_value: publish}}
 
+                http_filters:
+                  - name: envoy.filters.http.ratelimit
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.ratelimit.v3.RateLimit
+                      domain: broker_rate_limiter
+                      enable_x_ratelimit_headers: DRAFT_VERSION_03
+                      rate_limit_service:
+                        transport_api_version: V3
+                        grpc_service:
+                          envoy_grpc:
+                            cluster_name: rate-limit
+                  - name: envoy.filters.http.router
   clusters:
   - name: message_broker_cluster
     type: static
     lb_policy: round_robin
     http2_protocol_options: {}
-    connect_timeout: 120s
+    connect_timeout: 240s
     load_assignment:
       cluster_name:  message_broker_cluster
       endpoints:
@@ -71,3 +59,19 @@ static_resources:
               socket_address:
                 address: 0.0.0.0
                 port_value: 9000
+
+  - name: rate-limit
+    connect_timeout: 240s
+    type: STATIC
+    lb_policy: ROUND_ROBIN
+    protocol_selection: USE_CONFIGURED_PROTOCOL
+    http2_protocol_options: {}
+    load_assignment:
+      cluster_name: rate-limit
+      endpoints:
+        - lb_endpoints:
+            - endpoint:
+                address:
+                  socket_address:
+                    address: 0.0.0.0
+                    port_value: 10001

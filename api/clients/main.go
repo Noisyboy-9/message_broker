@@ -37,7 +37,7 @@ func main() {
 	// pushToSubject(client, ctx, subject, "some body for testing", int(10*time.Hour))
 
 	var wg sync.WaitGroup
-	ticker := time.NewTicker(90 * time.Microsecond) // 0.5 billion request in 20 minutes
+	ticker := time.NewTicker(10 * time.Millisecond) // 0.5 billion request in 20 minutes
 
 	doneIndicator := make(chan bool)
 
@@ -73,7 +73,7 @@ func pushToSubject(client proto.BrokerClient, ctx context.Context, subject strin
 	})
 
 	if err != nil {
-		log.Println("publish to subject failed: %s", err)
+		log.Printf("publish to subject failed: %s\n", err)
 		return
 	}
 
