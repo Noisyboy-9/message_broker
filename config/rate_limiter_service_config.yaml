@@ -1,0 +1,7 @@
+domain: broker_rate_limiter
+descriptors:
+  - key: generic_key
+    value: publish
+    rate_limit:
+      unit: second
+      requests_per_unit: 10
