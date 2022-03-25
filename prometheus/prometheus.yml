@@ -10,8 +10,5 @@ scrape_configs:
   - job_name: broker
     metrics_path:  /metrics
     static_configs:
-      - targets: ['172.26.10.211:8000']
-  - job_name: node
-    scrape_interval: 1s
-    static_configs:
-      - targets: ['node-exporter:9100']
+      - targets: ['localhost:8000']
+

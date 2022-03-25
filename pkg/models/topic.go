@@ -46,33 +46,33 @@ func (topic *Topic) Messages() (messages []*Message) {
 }
 
 func GetOrCreateTopicByName(dbConnection *pgxpool.Pool, dbCtx context.Context, name string, lastTopicId *int, lock *sync.Mutex) *Topic {
-	return &Topic{
-		Id: 1,
-		Model: Model{
-			db:    dbConnection,
-			dbCtx: dbCtx,
-		},
-		Name: name,
-	}
-
-	// if TopicExist(dbConnection, dbCtx, name) {
-	// 	return GetTopicByName(dbConnection, dbCtx, name)
-	// }
-
-	// 	topic doesn't exist create and persist it
-	// lock.Lock()
-	// *lastTopicId += 1
-	// topic := Topic{
-	// 	Id: *lastTopicId,
+	// return &Topic{
+	// 	Id: 1,
 	// 	Model: Model{
 	// 		db:    dbConnection,
 	// 		dbCtx: dbCtx,
 	// 	},
 	// 	Name: name,
 	// }
-	// lock.Unlock()
 
-	// return topic.Save(dbConnection, dbCtx)
+	if TopicExist(dbConnection, dbCtx, name) {
+		return GetTopicByName(dbConnection, dbCtx, name)
+	}
+
+	// topic doesn't exist create and persist it
+	lock.Lock()
+	*lastTopicId += 1
+	topic := Topic{
+		Id: *lastTopicId,
+		Model: Model{
+			db:    dbConnection,
+			dbCtx: dbCtx,
+		},
+		Name: name,
+	}
+	lock.Unlock()
+
+	return topic.Save(dbConnection, dbCtx)
 }
 
 func GetTopicByName(db *pgxpool.Pool, ctx context.Context, name string) *Topic {

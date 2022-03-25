@@ -4,11 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"therealbroker/api/pb/api/proto"
-
-	"google.golang.org/grpc/metadata"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -19,7 +18,7 @@ var (
 )
 
 func main() {
-	connection, err := grpc.Dial("localhost:10000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	connection, err := grpc.Dial("localhost:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	if err != nil {
 		log.Fatalf("can't connect to server: %v", err)
@@ -35,46 +34,44 @@ func main() {
 	client := proto.NewBrokerClient(connection)
 	ctx := context.Background()
 
-	pushToSubject(client, ctx, subject, "some body for testing", int(10*time.Hour))
-	// var wg sync.WaitGroup
-	// ticker := time.NewTicker(50 * time.Millisecond) // 0.5 billion request in 20 minutes
-	//
-	// doneIndicator := make(chan bool)
-	//
-	// wg.Add(1)
-	// go func() {
-	// 	defer wg.Done()
-	// 	for {
-	// 		select {
-	// 		case <-doneIndicator:
-	// 			return
-	// 		case <-ticker.C:
-	// 			body := fmt.Sprintf("some text for testing : %v", time.Now())
-	// 			go pushToSubject(client, ctx, subject, body, int(10*time.Hour))
-	// 		}
-	// 	}
-	// }()
-	//
-	// wg.Add(1)
-	// go func() {
-	// 	defer wg.Done()
-	// 	time.Sleep(20 * time.Minute)
-	// 	ticker.Stop()
-	// 	doneIndicator <- true
-	// }()
-	// wg.Wait()
+	// pushToSubject(client, ctx, subject, "some body for testing", int(10*time.Hour))
+
+	var wg sync.WaitGroup
+	ticker := time.NewTicker(50 * time.Microsecond) // 0.5 billion request in 20 minutes
+
+	doneIndicator := make(chan bool)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-doneIndicator:
+				return
+			case <-ticker.C:
+				body := fmt.Sprintf("some text for testing : %v", time.Now())
+				go pushToSubject(client, ctx, subject, body, int(10*time.Hour))
+			}
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		time.Sleep(20 * time.Minute)
+		ticker.Stop()
+		doneIndicator <- true
+	}()
+	wg.Wait()
 }
 
 func pushToSubject(client proto.BrokerClient, ctx context.Context, subject string, body string, expire int) {
-	var header metadata.MD
-
 	response, err := client.Publish(ctx, &proto.PublishRequest{
 		Subject:           subject,
 		Body:              []byte(body),
 		ExpirationSeconds: int32(expire),
-	}, grpc.Header(&header))
+	})
 
-	fmt.Println(header)
 	if err != nil {
 		log.Printf("publish to subject failed: %s\n", err)
 		return

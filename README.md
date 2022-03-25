@@ -1,25 +1,25 @@
-# Welcome project for newcomers!
+# Message Broker
+In Bale Messenger’s golang backend trainee program, as our final project, we were tasked to implement a gRPC message 
+broker. In this project I had hands-on experience working with:
+ - Channels / Lock / Mutex
+ - grpc/Protobuf
+ - Postgres & SQL
+ - Load testing
+ - Unit testing
+ - Load Testing using K6 and custom written golang client
+ - Tracing using Jaeger
+ - Performance scrapping using prometheus 
+ - Performance monitoring using custom-built Grafana dashboards
+ - Global and local rate limiting using envoy
+ - Containerization and container orchestration using Kubernetes
+ - Performance optimization using insert batching and in-memory caching
 
-# Introduction
-In this project you have to implement a message broker, based on `broker.Broker`
-interface. There are unit tests to specify requirements and also validate your implementation.
+## Performance Report 
+We had several load testing and stress testing phases on broker's publish functionality using K6 and custom-built 
+golang clients. 
 
-# Roadmap
-- [ ] Implement `broker.Broker` interface and pass all tests
-- [ ] Add basic logs and prometheus metrics
-  - Metrics for each RPCs:
-    - `method_count` to show count of failed/successful RPC calls
-    - `method_duration` for latency of each call, in 99, 95, 50 quantiles
-    - `active_subscribers` to display total active subscriptions
-  - Env metrics:
-    - Metrics for your application memory, cpu load, cpu utilization, GCs
-- [ ] Implement gRPC API for the broker and main functionalities
-- [ ] Create *dockerfile* and *docker-compose* files for your deployment
-- [ ] Deploy your app with the previous `docker-compose` on a remote machine
-- [ ] Deploy your app on K8
+### rate
+![publish rate](./screenshots/publish_rate.png)
 
-# Phase 2 Evaluation
-We run our gRPC client that implemented the `broker.proto` against your deployed broker application.
-
-As it should function properly ( like the unit tests ), we expect the provided metrics to display a good observation, and if
-anything unexpected happened, you could diagnose your app, using the logs and other tools.
+### latency
+![latency](./screenshots/latency.png)
