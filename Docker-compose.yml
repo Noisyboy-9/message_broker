@@ -1,83 +1,89 @@
 version: "3.9"
 
 services:
-#  broker:
-#    hostname: borker
-#    image: noisyboy9/bale_message_broker:latest
-#    ports:
-#      - "8000:8000"
-#      - "9000:9000"
-#    restart: on-failure
-#    depends_on:
-#      - postgress
+  broker:
+    hostname: borker
+    image: noisyboy9/bale_message_broker:latest
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    restart: on-failure
+    depends_on:
+      - postgress
 
-#  jaeger:
-#    hostname: "jaeger"
-#    image: jaegertracing/all-in-one:latest
-#    ports:
-#      - "6831:6831/udp"
-#      - "16686:16686"
-#      - "14268:14268"
+  jaeger:
+    hostname: "jaeger"
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "6831:6831/udp"
+      - "16686:16686"
+      - "14268:14268"
 
-#  postgress:
-#    hostname: db
-#    image: postgres:latest
-#    restart: always
-#    environment:
-#      - POSTGRES_USER=postgres
-#      - POSTGRES_PASSWORD=postgres
-#      - POSTGRES_DB=broker
-#    ports:
-#      - "5432:5432"
-#
-#  prometheus:
-#    hostname: prometheus
-#    image: prom/prometheus:latest
-#    volumes:
-#      - ./prometheus:/etc/prometheus/
-#      - prometheus-data:/prometheus
-#    command:
-#      - '--config.file=/etc/prometheus/prometheus.yml'
-#      - '--storage.tsdb.path=/prometheus'
-#      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-#      - '--web.console.templates=/usr/share/prometheus/consoles'
-#    ports:
-#      - "9090:9090"
-#
-#  node_exporter:
-#    image: prom/node-exporter
-#    container_name: node-exporter
-#    ports:
-#      - "9100:9100"
-#    command:
-#      - "--path.rootfs=/host"
-#    pid: host
-#    restart: always
-#    depends_on:
-#      - prometheus
-#
-#  grafana:
-#    image: grafana/grafana:latest
-#    volumes:
-#      - grafana_data:/var/lib/grafana
-#    ports:
-#      - "3000:3000"
-#    depends_on:
-#      - prometheus
+  postgress:
+    hostname: db
+    image: postgres:latest
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=broker
+    ports:
+      - "5432:5432"
+
+  prometheus:
+    hostname: prometheus
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus:/etc/prometheus/
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+
+  node_exporter:
+    image: prom/node-exporter
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    command:
+      - "--path.rootfs=/host"
+    pid: host
+    restart: always
+    depends_on:
+      - prometheus
+
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
 
   redis:
     image: redis:alpine
     expose:
       - 6379
     ports:
-      - 6379:6379
+      - "6379:6379"
+
+  redis-exporter:
+    image: bitnami/redis-exporter
+    command: -redis.addr redis://redis:6379
+    ports:
+      - "9121:9121"
 
   ratelimit:
     image: envoyproxy/ratelimit:bd46f11b
     command: /bin/ratelimit
     ports:
-      - 10001:8081
-      - 6070:6070
+      - "8081:8081"
+      - "6070:6070"
     depends_on:
       - redis
     volumes:
@@ -89,11 +95,26 @@ services:
       - REDIS_URL=redis:6379
       - RUNTIME_ROOT=/data
       - RUNTIME_SUBDIRECTORY=config
+    restart: on-failure
+
+  cadvisor:
+    image:  gcr.io/cadvisor/cadvisor:v0.44.0
+    container_name: monitoring_cadvisor
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    expose:
+      - 8080
+    ports:
+      - "8080:8080"
 
 
-#volumes:
-#  grafana_data:
-#    driver: local
-#  prometheus-data:
-#      driver: local
+volumes:
+  grafana_data:
+    driver: local
+  prometheus-data:
+      driver: local
 
